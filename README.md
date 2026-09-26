@@ -68,6 +68,7 @@ src/
   components/   Reusable UI pieces
   features/     Logic for each feature (stories, delivery, devices)
   lib/          Shared helpers (env, supabase, ai, comic image tools)
+  types/        Shared shapes for a comic (panels, print size)
 docs/           Robot API contract
 robot/          Reference Python client for the Raspberry Pi
 ```
