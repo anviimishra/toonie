@@ -1,0 +1,17 @@
+# Normalize line endings so a Windows checkout and a macOS or Linux checkout
+# produce byte-identical files. Without this, core.autocrlf=true hands Windows
+# a CRLF worktree while Prettier writes LF, and every `npm run format` marks
+# files as modified that nobody touched.
+* text=auto eol=lf
+
+# Binary files: never translate, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.wav binary
