@@ -15,9 +15,12 @@ const publicSchema = z.object({
 
 const serverSchema = publicSchema.extend({
   SUPABASE_SECRET_KEY: z.string().min(1),
-  OPENAI_API_KEY: z.string().min(1),
-  IMAGE_PROVIDER: z.enum(["openai", "hf"]).default("openai"),
-  HF_API_TOKEN: z.string().optional(),
+  // xAI covers the whole pipeline: transcription, the panel script, and the
+  // panel images. One key, one bill.
+  XAI_API_KEY: z.string().min(1),
+  XAI_TEXT_MODEL: z.string().default("grok-4.7"),
+  XAI_IMAGE_MODEL: z.string().default("grok-imagine-image-2.0"),
+  XAI_TRANSCRIBE_MODEL: z.string().default("grok-voice-transcribe-2.0"),
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;

@@ -15,9 +15,15 @@ describe("env", () => {
     expect(() => parsePublicEnv({})).toThrow(/NEXT_PUBLIC_SUPABASE_URL/);
   });
 
-  it("defaults IMAGE_PROVIDER to openai", () => {
-    const env = parseServerEnv({ ...base, SUPABASE_SECRET_KEY: "s", OPENAI_API_KEY: "k" });
-    expect(env.IMAGE_PROVIDER).toBe("openai");
+  it("defaults the Grok models so only the key is required", () => {
+    const env = parseServerEnv({ ...base, SUPABASE_SECRET_KEY: "s", XAI_API_KEY: "k" });
+    expect(env.XAI_TEXT_MODEL).toBe("grok-4.7");
+    expect(env.XAI_IMAGE_MODEL).toBe("grok-imagine-image-2.0");
+    expect(env.XAI_TRANSCRIBE_MODEL).toBe("grok-voice-transcribe-2.0");
+  });
+
+  it("requires the xAI key", () => {
+    expect(() => parseServerEnv({ ...base, SUPABASE_SECRET_KEY: "s" })).toThrow(/XAI_API_KEY/);
   });
 
   it("requires server secrets", () => {
