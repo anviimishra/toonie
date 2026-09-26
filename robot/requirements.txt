@@ -1,0 +1,9 @@
+# Only needed to talk to real hardware or to use Realtime.
+# The mock server and `client.py --dry-run` need none of this.
+
+python-escpos>=3.0   # thermal printer over USB or serial
+pillow>=10.0         # python-escpos uses it to rasterise the strip
+
+# Optional: instant delivery instead of waiting for the next poll.
+# The poll fallback works without it.
+realtime>=2.0

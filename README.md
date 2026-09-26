@@ -69,5 +69,6 @@ src/
   features/     Logic for each feature (stories, delivery, devices)
   lib/          Shared helpers (env, supabase, ai, comic image tools)
 docs/           Robot API contract
-robot/          Reference Python client for the Raspberry Pi
+robot/          Reference Python client for the Raspberry Pi,
+                plus a mock server so it runs with no hardware
 ```
