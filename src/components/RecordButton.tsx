@@ -1,7 +1,8 @@
 "use client";
 
-import type { RecorderState } from "@/hooks/useRecorder";
+import { MicIcon, StopIcon } from "@/components/icons";
 import { formatDuration } from "@/features/stories";
+import type { RecorderState } from "@/hooks/useRecorder";
 
 type Props = {
   state: RecorderState;
@@ -10,70 +11,103 @@ type Props = {
   onStop: () => void;
 };
 
-const LABEL: Record<RecorderState, string> = {
-  idle: "Hold to talk",
-  requesting: "Let us hear you…",
-  recording: "Listening…",
-  recorded: "Hold to try again",
-  denied: "Microphone blocked",
-  unsupported: "Recording not supported",
+const HINT: Record<RecorderState, string> = {
+  idle: "Hold to tell your story",
+  requesting: "Allow the microphone…",
+  recording: "Let go when you're done",
+  recorded: "Got it! Hold again to redo",
+  denied: "Microphone is blocked",
+  unsupported: "This browser can't record",
 };
 
 /**
- * The big round button that is the whole point of the home screen.
+ * The big round button that is the point of the home screen.
  *
- * Hold to record, release to stop. Pointer events cover mouse, touch and pen
- * in one path; `onPointerLeave` stops a recording if a finger slides off the
- * button, which otherwise leaves it recording forever.
+ * Built in layers for depth: a breathing halo, a recessed well it sits in, and
+ * a glossy domed face. Hold to record, release to stop. Pointer events cover
+ * mouse, touch and pen in one path; leaving or cancelling also stops, so a
+ * finger sliding off never leaves it recording.
  */
 export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
   const recording = state === "recording";
   const blocked = state === "denied" || state === "unsupported";
 
+  const face = recording
+    ? "from-rose-400 to-red-600 shadow-[0_18px_36px_-10px_rgb(220_38_38/0.7),inset_0_2px_0_rgb(255_255_255/0.45),inset_0_-8px_14px_rgb(127_29_29/0.35)]"
+    : "from-orange-400 to-orange-600 shadow-[0_20px_40px_-12px_rgb(234_88_12/0.75),inset_0_2px_0_rgb(255_255_255/0.45),inset_0_-8px_14px_rgb(154_52_18/0.35)]";
+
   return (
-    <div className="flex flex-col items-center gap-3">
-      <button
-        type="button"
-        disabled={blocked}
-        aria-label={LABEL[state]}
-        aria-pressed={recording}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          if (!blocked) onStart();
-        }}
-        onPointerUp={() => recording && onStop()}
-        onPointerLeave={() => recording && onStop()}
-        onPointerCancel={() => recording && onStop()}
-        className={[
-          "relative grid h-44 w-44 place-items-center rounded-full",
-          "text-xl font-extrabold text-accent-foreground select-none",
-          "transition-transform duration-150 disabled:opacity-40",
-          "focus-visible:ring-4 focus-visible:ring-accent/40 focus-visible:outline-none",
-          recording ? "scale-95 bg-red-500" : "bg-accent hover:brightness-110 active:scale-95",
-        ].join(" ")}
-      >
-        {/* A pulse, so it is obvious at a glance that it is live. */}
-        {recording && (
-          <span className="absolute inset-0 animate-ping rounded-full bg-red-500/40 motion-reduce:animate-none" />
+    <div className="flex flex-col items-center gap-5">
+      {/* Sized from the space it is given (a size container, see RecordPage), so
+          it shrinks on short phones instead of overlapping what is above it. */}
+      <div className="relative grid size-[min(16rem,calc(100cqh_-_5.5rem),85cqw)] place-items-center">
+        {/* Halo: breathes while idle, ripples while recording. */}
+        <span
+          aria-hidden="true"
+          className={[
+            "absolute inset-0 rounded-full",
+            recording
+              ? "animate-ping bg-red-400/30 motion-reduce:animate-none"
+              : "animate-breathe bg-orange-300/40 motion-reduce:animate-none",
+            blocked ? "hidden" : "",
+          ].join(" ")}
+        />
+        {/* The well the button sits in. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-[9%] rounded-full bg-linear-to-b from-orange-100 to-white shadow-[inset_0_6px_14px_rgb(154_52_18/0.18),0_1px_0_rgb(255_255_255)]"
+        />
+
+        <button
+          type="button"
+          disabled={blocked}
+          aria-label={recording ? "Stop recording" : "Hold to record your story"}
+          aria-pressed={recording}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            if (!blocked) onStart();
+          }}
+          onPointerUp={() => recording && onStop()}
+          onPointerLeave={() => recording && onStop()}
+          onPointerCancel={() => recording && onStop()}
+          onContextMenu={(event) => event.preventDefault()}
+          className={[
+            "relative grid size-[62%] touch-none place-items-center overflow-hidden rounded-full bg-linear-to-b text-white select-none",
+            "transition-[transform,box-shadow] duration-150",
+            "focus-visible:ring-4 focus-visible:ring-orange-300 focus-visible:outline-none",
+            "disabled:from-stone-300 disabled:to-stone-400 disabled:shadow-none",
+            recording ? "scale-95" : "hover:scale-[1.03] active:scale-95",
+            face,
+          ].join(" ")}
+        >
+          {/* Gloss across the top of the dome. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-[18%] top-[7%] h-[34%] rounded-full bg-linear-to-b from-white/50 to-white/0"
+          />
+          {recording ? (
+            <StopIcon className="relative size-[34%] drop-shadow-[0_2px_2px_rgb(0_0_0/0.25)]" />
+          ) : (
+            <MicIcon className="relative size-[38%] drop-shadow-[0_2px_2px_rgb(0_0_0/0.25)]" />
+          )}
+        </button>
+      </div>
+
+      <div className="flex h-12 flex-col items-center justify-start">
+        {recording ? (
+          <p className="font-mono text-3xl font-bold text-red-600 tabular-nums">
+            {formatDuration(elapsedMs)}
+          </p>
+        ) : null}
+        <p aria-live="polite" className="text-sm font-bold text-stone-500">
+          {HINT[state]}
+        </p>
+        {state === "denied" && (
+          <p className="mt-1 max-w-xs text-center text-xs text-red-600">
+            Allow the mic in your browser settings, or switch to Type.
+          </p>
         )}
-        <span className="relative">{recording ? formatDuration(elapsedMs) : "Hold"}</span>
-      </button>
-
-      <p aria-live="polite" className="text-muted text-sm font-semibold">
-        {LABEL[state]}
-      </p>
-
-      {state === "denied" && (
-        <p className="max-w-xs text-center text-sm text-red-600">
-          Let this page use your microphone in your browser settings, then try again. You can also
-          type your story instead.
-        </p>
-      )}
-      {state === "unsupported" && (
-        <p className="max-w-xs text-center text-sm text-red-600">
-          This browser cannot record audio. Type your story instead.
-        </p>
-      )}
+      </div>
     </div>
   );
 }
