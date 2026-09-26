@@ -1,11 +1,9 @@
+import { PANEL_COUNT_MAX, PANEL_COUNT_MIN, panelCountSchema } from "@/types";
 import type { StoryDraft } from "./types";
 
-/**
- * Panel bounds. These also exist as a zod schema in src/types (PR #4) and as a
- * check constraint in the migration; fold them together once that merges.
- */
-export const PANEL_COUNT_MIN = 1;
-export const PANEL_COUNT_MAX = 6;
+export { PANEL_COUNT_MAX, PANEL_COUNT_MIN };
+
+/** What the picker starts on. A UI choice, not a rule. */
 export const PANEL_COUNT_DEFAULT = 4;
 
 /** Below this a story is too short to make a comic out of. */
@@ -21,10 +19,9 @@ export type DraftCheck = { ok: true } | { ok: false; reason: string };
  * Pure, so the record screen stays free of validation logic.
  */
 export function checkDraft(draft: StoryDraft, recordedMs = 0): DraftCheck {
-  if (!Number.isInteger(draft.panelCount)) {
-    return { ok: false, reason: "Pick how many panels you want." };
-  }
-  if (draft.panelCount < PANEL_COUNT_MIN || draft.panelCount > PANEL_COUNT_MAX) {
+  // The same schema the API validates against, so the screen and the server
+  // can never disagree about what a legal panel count is.
+  if (!panelCountSchema.safeParse(draft.panelCount).success) {
     return {
       ok: false,
       reason: `Pick between ${PANEL_COUNT_MIN} and ${PANEL_COUNT_MAX} panels.`,

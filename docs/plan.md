@@ -82,16 +82,15 @@ server does all the image work; the printer host only sends a ready PNG.
 All that is left is a **Bluetooth thermal printer** and a **servo** for the
 arm. Neither is settled, so the app must not care which exists:
 
-- The receiving screen calls one `print(delivery)` seam. Default behaviour is
-  to animate. When a real printer host is attached, the same delivery is
-  picked up over the device API and printed for real.
-- `robot/client.py` still applies. Nothing in it was Pi-specific — it is plain
-  Python over HTTP, so it runs on a laptop. For a Bluetooth printer, the
-  printer appears as a serial port, so it is a `Serial` backend rather than
-  `Usb`.
-- The servo needs PWM, which a laptop has no pins for. That means a small
-  microcontroller over USB serial, or we drop the arm and keep the wake-up
-  animation.
+- The receiving screen calls one `print(delivery)` function. By default it
+  just animates. A real printer is swapped in behind that one call, so no
+  other part of the app changes.
+- **Printing route is undecided.** Chrome can talk to low-energy Bluetooth
+  devices straight from the page, which would mean the receiving screen prints
+  by itself with no extra program. Older Bluetooth printers cannot do that and
+  would need a small script on a laptop. Check the printer model before
+  building either.
+- The servo is someone else's job, driven by an Arduino.
 
 **If the hardware does not come together, the demo still works.** That is the
 point of the seam.
@@ -114,11 +113,12 @@ so it gets amended in place rather than patched):
 - Real accounts, once we move off the stubbed auth.
 - `avatars`: the uploaded photo and the generated avatar image per member.
 
-## Device API
+## Printer hand-off
 
-`docs/robot-api.md` holds the contract: `register`, `inbox`,
-`deliveries/:id/printed`, `stories`, `state`. It is host-agnostic — "robot"
-means whatever drives the printer. It stays valid after the pivot.
+Dropped for now. The original plan had a separate robot device that registered
+itself and polled for new comics. With both ends being screens in the app,
+that layer may never be needed — see the printing note above. The shared comic
+shapes (`src/types`) survived; the device API did not.
 
 ## Code structure
 
@@ -138,8 +138,7 @@ src/
     comic/ layout.ts, compose.ts, dither.ts  # pure, unit-tested
     supabase/ server.ts, client.ts
     env.ts
-  types/                  shared DTOs = the contract
-robot/client.py
+  types/                  shared comic shapes (panels, print size)
 ```
 
 Conventions: TypeScript strict, zod on every API input, thin route handlers
@@ -155,18 +154,20 @@ Done:
 
 1. **Scaffold** — Next.js, TS, Tailwind, lint/format, Vitest, `env.ts`
 2. **Database** — migration and typed clients
-3. **Robot contract** — `docs/robot-api.md` and shared DTOs _(open)_
-4. **Robot client** — `robot/client.py` and a mock server _(open)_
-5. **Grok provider** — this one
+3. **Grok provider** — xAI everywhere, plan updated for the pivot
+4. **Record screen** — the home page, with auth and sending stubbed
+5. **Comic shapes** — `src/types`, shared by the screen and the pipeline
+
+Dropped: the robot client and mock server (PR #5), closed when the Pi went
+away.
 
 Next:
 
-6. **Sender app shell** — swappable auth, login/signup, and the record screen
+6. **Login and signup** — plugs into the existing auth interface
 7. **Feed and avatar** — received comics, photo upload, preset picker
 8. **Comic pipeline** — transcribe → script → draw → compose + dither
-9. **Receiver screen** — the sleeping cat, wake animation, print seam, send-back
-10. **Device API** — register, inbox, ack, realtime
-11. **Polish** — animations, demo seed data, backup comics
+9. **Receiver screen** — the sleeping cat, wake animation, print call, send-back
+10. **Polish** — animations, demo seed data, backup comics
 
 **Commit/PR rules:** no co-author or session trailers, and no "generated with"
 footers. PR descriptions are short and plain: what changed, why, how to test.
@@ -176,7 +177,5 @@ footers. PR descriptions are short and plain: what changed, why, how to test.
 - Each PR: `npm run lint`, `typecheck`, `test`, `build` all pass
 - The pipeline script writes `out/web.png` and `out/print.png` for 1, 3 and 6
   panels. The print image must be 384px wide and 1-bit.
-- `robot/client.py --dry-run` against `robot/mock_server.py`: a comic arrives
-  and is printed once, with no double print on a repeat pass
 - Phone flow: sign in → record → pick 4 panels → comic appears → the receiving
   screen wakes and prints it
