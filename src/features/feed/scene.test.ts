@@ -76,6 +76,11 @@ describe("describeScene", () => {
     expect(describeScene("Grandpa and the dog").characters).toBe(2);
   });
 
+  it("notices grandparents", () => {
+    expect(describeScene("Grandpa building a snowman").elder).toBe(true);
+    expect(describeScene("Dad in a boat").elder).toBe(false);
+  });
+
   it("keeps the character count between one and three", () => {
     for (const scene of ["a", "b", "c", "d", "e", "f", "someone alone"]) {
       const { characters } = describeScene(scene);

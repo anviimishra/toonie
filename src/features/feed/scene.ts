@@ -32,6 +32,8 @@ export type SceneSpec = {
   mood: SceneMood;
   /** 1 to 3 people. */
   characters: number;
+  /** The scene is about a grandparent, so the first person gets grey hair. */
+  elder: boolean;
   /** 1 or 2 props, in the order the scene mentions them. */
   props: SceneProp[];
 };
@@ -87,7 +89,9 @@ function pickSetting(text: string): SceneSetting {
   if (has(text, "beach|sand|seaside|ocean|waves")) return "beach";
   if (has(text, "snow|winter|ice rink|sled")) return "snow";
   if (has(text, "lake|river|pond|boat|fishing|canoe")) return "lake";
-  if (has(text, "kitchen|house|home|room|inside|indoors|class ?room|barn|window|bed\\b|table|sofa")) {
+  if (
+    has(text, "kitchen|house|home|room|inside|indoors|class ?room|barn|window|bed\\b|table|sofa")
+  ) {
     return "indoors";
   }
   return "outdoors";
@@ -129,6 +133,7 @@ export function describeScene(scene: string): SceneSpec {
     setting,
     mood: pickMood(text),
     characters: pickCharacters(text, seed),
+    elder: has(text, "grand(?:ma|pa|mother|father|ad)|granny|nana|gran\b"),
     props: pickProps(text, setting, seed),
   };
 }
