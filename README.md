@@ -18,6 +18,39 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Database
+
+The schema lives in `supabase/migrations`. Apply it to a Supabase project once:
+
+```bash
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
+```
+
+That creates five tables (`capsules`, `members`, `devices`, `stories`,
+`deliveries`), the `audio` and `comics` storage buckets, and publishes
+`deliveries` to Realtime so a robot is notified the moment a comic is ready.
+
+Row level security is on for every table. The server uses the secret key and
+bypasses it; the browser and the robot use the publishable key and can read
+only `deliveries`, which holds ids and a status but no story content.
+
+Two clients wrap it:
+
+| Import                                           | Key         | Use from                     |
+| ------------------------------------------------ | ----------- | ---------------------------- |
+| `supabaseServer()` from `@/lib/supabase/server`  | secret      | route handlers, `features/*` |
+| `supabaseBrowser()` from `@/lib/supabase/client` | publishable | client components, Realtime  |
+
+`supabaseServer()` throws if it is ever called in the browser, so the secret key
+cannot leak into a bundle. After changing the schema, regenerate the types:
+
+```bash
+npx supabase gen types typescript --project-id <ref> > src/lib/supabase/types.ts
+```
+
+`src/lib/supabase/schema.test.ts` fails if `types.ts` and the migration disagree.
+
 ## Scripts
 
 | Command          | What it does                                       |
