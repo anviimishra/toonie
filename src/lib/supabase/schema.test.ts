@@ -58,6 +58,12 @@ describe("migration", () => {
     expect(sql).toMatch(/unique \(story_id, device_id\)/i);
   });
 
+  it("pins search_path on the trigger function", () => {
+    // An unqualified name in a function body resolves through the caller's
+    // search_path unless it is pinned; Supabase's linter flags that.
+    expect(sql).toMatch(/set search_path = ''/i);
+  });
+
   it("publishes deliveries to realtime", () => {
     expect(sql).toMatch(/alter publication supabase_realtime add table deliveries/i);
   });

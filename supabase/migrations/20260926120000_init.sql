@@ -103,8 +103,14 @@ create index deliveries_story_idx on deliveries (story_id);
 -- ------------------------------------------------------- updated_at
 
 -- `stories.status` moves through the pipeline, so keep updated_at honest.
-create function set_updated_at() returns trigger
+-- `security invoker` and a pinned empty search_path: without them Postgres
+-- resolves unqualified names using the caller's search_path, which Supabase's
+-- linter flags (function_search_path_mutable). now() lives in pg_catalog, which
+-- is always resolvable, so an empty path is enough here.
+create function public.set_updated_at() returns trigger
 language plpgsql
+security invoker
+set search_path = ''
 as $$
 begin
   new.updated_at := now();
@@ -115,7 +121,7 @@ $$;
 create trigger stories_set_updated_at
   before update on stories
   for each row
-  execute function set_updated_at();
+  execute function public.set_updated_at();
 
 -- ------------------------------------------------------------------ RLS
 
