@@ -5,7 +5,7 @@ function stubValidEnv(): void {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_x");
   vi.stubEnv("SUPABASE_SECRET_KEY", "sb_secret_x");
-  vi.stubEnv("OPENAI_API_KEY", "sk-x");
+  vi.stubEnv("XAI_API_KEY", "xai-x");
 }
 
 describe("supabaseServer", () => {
