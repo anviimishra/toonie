@@ -104,7 +104,6 @@ export default function RecordPage() {
         if (!mounted) return;
         restoredJob.current = job.id;
         setComic(job.comic!);
-        void saveComicLocally(job.id, job.comic!);
         setComicId(job.id);
         setComicSource(savedSource);
         setSource(savedSource);
@@ -112,8 +111,9 @@ export default function RecordPage() {
         setMode(savedSource.audio ? "talk" : "type");
         setPanelCount(job.comic!.stickerPanels?.length ?? Math.min(4, job.comic!.panels.length));
         preparedStory.current = existing?.id === job.id ? existing.submission : undefined;
-        // Only the first time this job's comic arrives, not on every reload.
-        if (existing?.id !== job.id) void saveComicLocally(job.comic!);
+        // Write the PNGs for the printer the first time this comic arrives, not on
+        // every reload (saveComicLocally also remembers the last comic it wrote).
+        if (existing?.id !== job.id) void saveComicLocally(job.id, job.comic!);
         await saveDraft({
           id: job.id,
           comic: job.comic!,
