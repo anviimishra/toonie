@@ -16,6 +16,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadInput, saveInput, clearDraft, loadDraft, saveDraft } from "@/features/stories/storage";
 import { useComicJob, jobSource } from "@/features/stories/useComicJob";
+import { apiFetch } from "@/lib/api-client";
+import { LOCAL_COMIC_FILE, LOCAL_PRINT_FILE } from "@/lib/local-save";
 import { deliverStory, getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 import { avatars } from "@/features/avatar";
@@ -31,7 +33,11 @@ import {
   type PreparedStory,
   type StorySource,
 } from "@/features/stories/submission";
-import { downloadSticker, renderSticker } from "@/features/stories/export-sticker";
+import {
+  downloadSticker,
+  renderPrintImage,
+  renderSticker,
+} from "@/features/stories/export-sticker";
 import { ComicPanel } from "@/components/feed/ComicPanel";
 import type { Comic } from "@/types";
 import { useRecorder } from "@/hooks/useRecorder";
@@ -105,6 +111,8 @@ export default function RecordPage() {
         setMode(savedSource.audio ? "talk" : "type");
         setPanelCount(job.comic!.stickerPanels?.length ?? Math.min(4, job.comic!.panels.length));
         preparedStory.current = existing?.id === job.id ? existing.submission : undefined;
+        // Only the first time this job's comic arrives, not on every reload.
+        if (existing?.id !== job.id) void saveComicLocally(job.comic!);
         await saveDraft({
           id: job.id,
           comic: job.comic!,
@@ -494,4 +502,27 @@ export default function RecordPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Local development: also write the finished comic to the project folder, in
+ * color (toonie-comic.png) and ready for the label printer (toonie-print.png).
+ * See /api/local-save. Best effort; never blocks the screen.
+ */
+async function saveComicLocally(comic: Comic) {
+  if (process.env.NODE_ENV === "production") return;
+  try {
+    const form = new FormData();
+    const [image, print] = await Promise.all([
+      renderSticker(comic.panels),
+      renderPrintImage(comic.panels),
+    ]);
+    form.set("image", image, LOCAL_COMIC_FILE);
+    form.set("print", print, LOCAL_PRINT_FILE);
+    const response = await apiFetch("/api/local-save", { method: "POST", body: form });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error);
+    console.info(`[comic] saved ${LOCAL_COMIC_FILE} and ${LOCAL_PRINT_FILE} in the project folder`);
+  } catch (error) {
+    console.warn("[comic] couldn't save the PNG to the project folder", error);
+  }
 }
