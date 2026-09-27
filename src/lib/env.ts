@@ -54,3 +54,27 @@ export const publicEnv = (): PublicEnv =>
   });
 
 export const serverEnv = (): ServerEnv => parseServerEnv(process.env);
+
+/**
+ * Just what the comic pipeline needs. Separate from the full server env so
+ * making a comic doesn't depend on the database being configured.
+ */
+const aiSchema = serverSchema.pick({
+  XAI_API_KEY: true,
+  XAI_TEXT_MODEL: true,
+  XAI_IMAGE_MODEL: true,
+  XAI_TRANSCRIBE_MODEL: true,
+});
+
+export type AiEnv = z.infer<typeof aiSchema>;
+
+export function parseAiEnv(source: Record<string, string | undefined>): AiEnv {
+  const result = aiSchema.safeParse(source);
+  if (!result.success) {
+    throw new Error(`Missing or invalid AI env vars:
+${format(result.error)}`);
+  }
+  return result.data;
+}
+
+export const aiEnv = (): AiEnv => parseAiEnv(process.env);

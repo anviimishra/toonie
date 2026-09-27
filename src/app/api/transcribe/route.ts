@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { transcribe } from "@/lib/ai/transcribe";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 /** Upper bound for one story; a few minutes of compressed audio is well under this. */
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -27,11 +30,10 @@ export async function POST(request: Request) {
 
   try {
     const transcript = await transcribe(parsed.data);
-    console.info(`[api/transcribe] ${transcript.duration ?? "?"}s: "${transcript.text}"`);
     return NextResponse.json(transcript);
   } catch (error) {
     console.error("[api/transcribe]", error);
-    if (error instanceof Error && error.message.startsWith("Missing or invalid server env vars")) {
+    if (error instanceof Error && error.message.startsWith("Missing or invalid AI env vars")) {
       return NextResponse.json(
         { error: "Transcription isn't set up: add XAI_API_KEY to .env.local." },
         { status: 500 },

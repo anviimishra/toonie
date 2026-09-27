@@ -1,10 +1,14 @@
-import { PANEL_COUNT_MAX, PANEL_COUNT_MIN, panelCountSchema } from "@/types";
+import { PANEL_COUNT_MIN } from "@/types";
+import {
+  STICKER_PANEL_COUNT_MAX as PANEL_COUNT_MAX,
+  stickerPanelCountSchema as panelCountSchema,
+} from "./sticker";
 import type { StoryDraft } from "./types";
 
 export { PANEL_COUNT_MAX, PANEL_COUNT_MIN };
 
 /** What the picker starts on. A UI choice, not a rule. */
-export const PANEL_COUNT_DEFAULT = 4;
+export const PANEL_COUNT_DEFAULT = 3;
 
 /** Below this a story is too short to make a comic out of. */
 export const MIN_TEXT_LENGTH = 10;
@@ -30,7 +34,7 @@ export function checkDraft(draft: StoryDraft, recordedMs = 0): DraftCheck {
 
   if (draft.mode === "talk") {
     if (!draft.audio || draft.audio.size === 0) {
-      return { ok: false, reason: "Hold the button and tell your story first." };
+      return { ok: false, reason: "Tap the button and tell your story first." };
     }
     if (recordedMs < MIN_RECORDING_MS) {
       return { ok: false, reason: "That was too short. Try telling a bit more." };

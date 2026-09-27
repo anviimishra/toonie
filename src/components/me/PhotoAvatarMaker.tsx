@@ -78,9 +78,9 @@ export function PhotoAvatarMaker({ initial, isSaved, onSave, onTweak, saving }: 
       if (mine !== request.current) return;
       setResult(avatar);
       setPhase("done");
-    } catch {
+    } catch (error) {
       if (mine !== request.current) return;
-      setProblem("Our pencils slipped. Try again!");
+      setProblem(error instanceof Error ? error.message : "Our pencils slipped. Try again!");
       setPhase("idle");
     }
   }

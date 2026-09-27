@@ -1,4 +1,4 @@
-import { serverEnv } from "@/lib/env";
+import { aiEnv } from "@/lib/env";
 
 /**
  * Speech to text with xAI (grok-voice-transcribe).
@@ -19,7 +19,7 @@ export async function transcribe(
   audio: Blob,
   options: { apiKey?: string; model?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<Transcript> {
-  const env = options.apiKey ? null : serverEnv();
+  const env = options.apiKey ? null : aiEnv();
   const apiKey = options.apiKey ?? env!.XAI_API_KEY;
   const model = options.model ?? env?.XAI_TRANSCRIBE_MODEL ?? "grok-voice-transcribe-2.0";
   const doFetch = options.fetchImpl ?? fetch;
@@ -35,6 +35,7 @@ export async function transcribe(
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
+    signal: AbortSignal.timeout(45_000),
   });
 
   if (!response.ok) {
