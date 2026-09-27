@@ -14,19 +14,19 @@ const COUNTS = Array.from(
 );
 
 /**
- * How many panels the comic should have: raised chips, one tap each, all six
+ * How many panels the comic should have: raised chips, one tap each, all four
  * visible so the choice is obvious to a child. The chosen one sinks in.
  */
 export function PanelCountPicker({ value, onChange, disabled = false }: Props) {
   return (
     <fieldset disabled={disabled} className="w-full">
       <legend className="mb-2.5 flex w-full items-baseline justify-between text-sm font-extrabold text-stone-600">
-        <span>Comic size</span>
+        <span>Sticker panels</span>
         <span className="text-xs font-bold text-stone-400">
           {value} panel{value === 1 ? "" : "s"}
         </span>
       </legend>
-      <div role="radiogroup" aria-label="Panel count" className="grid grid-cols-6 gap-2">
+      <div role="radiogroup" aria-label="Panel count" className="grid grid-cols-4 gap-2">
         {COUNTS.map((count) => {
           const selected = count === value;
           return (

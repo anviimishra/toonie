@@ -9,7 +9,7 @@ function draft(over: Partial<StoryDraft> = {}): StoryDraft {
 const audio = (size: number) => ({ size }) as Blob;
 
 describe("checkDraft, panel count", () => {
-  it.each([0, 7, -1])("rejects %s panels", (panelCount) => {
+  it.each([0, 5, 6, 7, -1])("rejects %s panels", (panelCount) => {
     const result = checkDraft(draft({ text: "a long enough story", panelCount }));
     expect(result).toMatchObject({ ok: false });
   });
@@ -20,7 +20,7 @@ describe("checkDraft, panel count", () => {
     });
   });
 
-  it.each([1, 6])("accepts %s panels", (panelCount) => {
+  it.each([1, 4])("accepts %s panels", (panelCount) => {
     expect(checkDraft(draft({ text: "a long enough story", panelCount }))).toEqual({ ok: true });
   });
 });
@@ -45,7 +45,7 @@ describe("checkDraft, recorded stories", () => {
   it("needs audio", () => {
     const result = checkDraft(draft({ mode: "talk" }), 5000);
     expect(result).toMatchObject({ ok: false });
-    if (!result.ok) expect(result.reason).toMatch(/hold the button/i);
+    if (!result.ok) expect(result.reason).toMatch(/tap the button/i);
   });
 
   it("rejects an empty blob", () => {

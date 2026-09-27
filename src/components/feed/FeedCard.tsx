@@ -1,3 +1,4 @@
+import { StickerComic } from "./StickerComic";
 import Link from "next/link";
 import { formatRelativeTime, type FeedItem } from "@/features/feed";
 import { ComicThumbnail } from "./ComicThumbnail";
@@ -12,7 +13,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   return (
     <Link
       href={`/feed/${encodeURIComponent(item.id)}`}
-      aria-label={`${isNew ? "New: " : ""}${item.title}, from ${item.sender.name}, ${when}, ${panels}`}
+      aria-label={`${item.direction === "sent" ? "Sent: " : isNew ? "New: " : ""}${item.title}, from ${item.sender.name}, ${when}, ${panels}`}
       className={[
         "block rounded-[28px] bg-white/90 p-4 shadow-card ring-1 ring-orange-100/70 backdrop-blur",
         "transition-transform duration-150 active:translate-y-0.5 active:scale-[0.99] motion-reduce:transition-none",
@@ -23,11 +24,20 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
         <SenderAvatar sender={item.sender} className="size-11 text-lg" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm text-stone-600">
-            <span className="font-extrabold text-stone-900">{item.sender.name}</span> sent you a
-            comic
+            {item.direction === "sent" ? (
+              "You sent a comic"
+            ) : (
+              <>
+                <span className="font-extrabold text-stone-900">{item.sender.name}</span> sent you a
+                comic
+              </>
+            )}
           </p>
           <p className="text-xs font-bold text-stone-400">{when}</p>
         </div>
+        {item.direction === "sent" && (
+          <span className="text-xs font-black text-orange-700">SENT</span>
+        )}
         {isNew && (
           <span className="relative shrink-0 rounded-full bg-linear-to-b from-orange-400 to-orange-600 px-2.5 py-1 text-[11px] font-black tracking-wider text-white shadow-raised">
             <span className="absolute -top-0.5 -right-0.5 size-2.5 animate-ping rounded-full bg-orange-400 motion-reduce:hidden" />
@@ -38,7 +48,11 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
 
       <h2 className="mt-3 mb-3 text-xl leading-tight font-black text-stone-900">{item.title}</h2>
 
-      <ComicThumbnail panels={item.panels} />
+      {item.format === "sticker" ? (
+        <StickerComic panels={item.panels} title={item.title} />
+      ) : (
+        <ComicThumbnail panels={item.panels} />
+      )}
     </Link>
   );
 }
