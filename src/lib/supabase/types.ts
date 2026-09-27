@@ -244,7 +244,10 @@ export type Database = {
       };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      consume_request_limit: { Args: { p_key: string; p_max: number }; Returns: boolean };
+      claim_child_code: { Args: { p_hash: string; p_child: string }; Returns: string };
+    };
     Enums: {
       story_source: StorySource;
       story_status: StoryStatus;

@@ -5,6 +5,7 @@ import { Button } from "@/components/Button";
 import { ComicsIcon, MicIcon } from "@/components/icons";
 import { FeedCard, FeedCardSkeleton } from "@/components/feed/FeedCard";
 import { LinkButton } from "@/components/feed/LinkButton";
+import { watchMessages } from "@/features/messages/client";
 import { feed, type FeedItem } from "@/features/feed";
 
 type State =
@@ -32,6 +33,8 @@ export default function FeedPage() {
       active = false;
     };
   }, [attempt]);
+
+  useEffect(() => watchMessages(() => setAttempt((n) => n + 1)), []);
 
   const retry = useCallback(() => {
     setState({ kind: "loading" });

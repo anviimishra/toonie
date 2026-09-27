@@ -7,7 +7,10 @@ export async function readComicStream(
 ): Promise<Comic> {
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error?.message ?? "Couldn't start your comic. Please try again.");
+    throw new Error(
+      (typeof body?.error === "string" ? body.error : body?.error?.message) ??
+        "Couldn't start your comic. Please try again.",
+    );
   }
   if (!response.body) throw new Error("The comic connection did not open.");
   const reader = response.body.getReader();

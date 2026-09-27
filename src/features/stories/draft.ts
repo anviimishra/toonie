@@ -36,6 +36,8 @@ export function checkDraft(draft: StoryDraft, recordedMs = 0): DraftCheck {
     if (!draft.audio || draft.audio.size === 0) {
       return { ok: false, reason: "Tap the button and tell your story first." };
     }
+    if (draft.audio.size > 3 * 1024 * 1024)
+      return { ok: false, reason: "That recording is too large. Please record a shorter story." };
     if (recordedMs < MIN_RECORDING_MS) {
       return { ok: false, reason: "That was too short. Try telling a bit more." };
     }

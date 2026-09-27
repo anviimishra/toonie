@@ -40,6 +40,7 @@ export function LoginForm({ onSubmitStart, onSuccess }: Props) {
   const [touched, setTouched] = useState<Partial<Record<LoginField, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const inputs = useRef<Partial<Record<LoginField, HTMLInputElement | null>>>({});
@@ -83,20 +84,28 @@ export function LoginForm({ onSubmitStart, onSuccess }: Props) {
     try {
       const email = fields.email.trim();
       if (creating) {
-        await auth.signUp({
+        const signedUp = await auth.signUp({
           email,
           password: fields.password,
           displayName: fields.displayName.trim(),
         });
+        if (!signedUp) {
+          setNotice("Check your email to confirm your account, then sign in here.");
+          setMode("signIn");
+          setPending(false);
+          return;
+        }
       } else {
         await auth.signIn({ email, password: fields.password });
       }
       onSuccess();
-    } catch {
+    } catch (error) {
       setProblem(
-        creating
-          ? "We couldn't make your account just now. Give it another go?"
-          : "That email and password didn't match. Try again?",
+        error instanceof Error
+          ? error.message
+          : creating
+            ? "We couldn't make your account just now. Give it another go?"
+            : "That email and password didn't match. Try again?",
       );
       setPending(false);
     }
@@ -178,6 +187,11 @@ export function LoginForm({ onSubmitStart, onSuccess }: Props) {
           readOnly={pending}
         />
 
+        {notice && (
+          <p role="status" className="text-sm text-stone-700">
+            {notice}
+          </p>
+        )}
         {problem && (
           <p role="alert" className="text-center text-sm font-bold text-red-600">
             {problem}

@@ -1,3 +1,5 @@
+import { apiError, requireUser, requireParent } from "@/lib/server-auth";
+import { limitRequest } from "@/lib/pairing";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { transcribe } from "@/lib/ai/transcribe";
@@ -22,6 +24,13 @@ const audioSchema = z
  * → { text, language, duration }
  */
 export async function POST(request: Request) {
+  try {
+    const { user } = await requireUser(request);
+    requireParent(user);
+    await limitRequest(request, user, "transcribe", 15);
+  } catch (e) {
+    return apiError(e);
+  }
   const form = await request.formData().catch(() => null);
   const parsed = audioSchema.safeParse(form?.get("audio"));
   if (!parsed.success) {

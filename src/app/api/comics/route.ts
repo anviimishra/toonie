@@ -1,3 +1,5 @@
+import { apiError, requireUser, requirePair, ApiError } from "@/lib/server-auth";
+import { limitRequest } from "@/lib/pairing";
 import { stickerPanelCountSchema } from "@/features/stories/sticker";
 import { referenceSchema } from "@/lib/ai/reference";
 import { z } from "zod";
@@ -44,11 +46,34 @@ function extensionFor(type: string): string {
   return "webm";
 }
 export async function POST(request: Request): Promise<Response> {
+  let identity;
+  try {
+    identity = await requireUser(request);
+    await limitRequest(request, identity.user, "generate", 15);
+  } catch (e) {
+    return apiError(e);
+  }
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
     return problem(400, "Send the story as multipart form data.");
+  }
+  if (identity.user.is_anonymous) {
+    try {
+      const pairId = z.string().uuid().safeParse(form.get("pairId"));
+      if (!pairId.success) throw new ApiError(400, "Connect your child device first.");
+      const pair = await requirePair(identity.db, pairId.data, identity.user);
+      if (pair.child_id !== identity.user.id || !pair.child_avatar_reference)
+        throw new ApiError(403, "Ask your parent to sync your avatar in Settings.");
+      form.set("reference", pair.child_avatar_reference);
+      form.set(
+        "narrator",
+        "The narrator is the exact child character in the supplied reference image.",
+      );
+    } catch (e) {
+      return apiError(e);
+    }
   }
   const text = form.get("text");
   const narrator = form.get("narrator");

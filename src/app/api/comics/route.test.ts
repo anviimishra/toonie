@@ -1,6 +1,13 @@
+vi.mock("@/lib/server-auth", async (original) => ({
+  ...(await original<typeof import("@/lib/server-auth")>()),
+  requireUser: vi.fn(async () => ({ user: { id: "parent", is_anonymous: false }, db: {} })),
+  requirePair: vi.fn(),
+}));
+vi.mock("@/lib/pairing", () => ({ limitRequest: vi.fn(async () => {}) }));
 import { beforeEach, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import { makeComic } from "@/lib/ai/pipeline";
+import { requireUser, requirePair, ApiError } from "@/lib/server-auth";
 
 vi.mock("@/lib/ai/pipeline", () => ({ makeComic: vi.fn(async () => {}) }));
 beforeEach(() => vi.mocked(makeComic).mockClear());
@@ -53,4 +60,34 @@ it("accepts a recording without client transcription and forwards its original b
   expect(input.filename).toBe("story.m4a");
   expect(await input.audio.text()).toBe("original recording");
   expect(input).not.toHaveProperty("text");
+});
+
+it("rejects unauthenticated generation before calling the provider", async () => {
+  vi.mocked(requireUser).mockRejectedValueOnce(new ApiError(401, "Sign in"));
+  expect((await POST(request())).status).toBe(401);
+  expect(makeComic).not.toHaveBeenCalled();
+});
+
+it("uses the paired child's saved avatar instead of a supplied reference", async () => {
+  vi.mocked(requireUser).mockResolvedValueOnce({
+    user: { id: "child", is_anonymous: true },
+    db: {},
+  } as Awaited<ReturnType<typeof requireUser>>);
+  vi.mocked(requirePair).mockResolvedValueOnce({
+    child_id: "child",
+    child_avatar_reference: "data:image/png;base64,Yg==",
+  } as Awaited<ReturnType<typeof requirePair>>);
+  const response = await POST(
+    request({
+      pairId: "11111111-1111-4111-8111-111111111111",
+      reference: "data:image/png;base64,YQ==",
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(makeComic).toHaveBeenCalledWith(
+    expect.objectContaining({
+      reference: "data:image/png;base64,Yg==",
+    }),
+    expect.any(Function),
+  );
 });

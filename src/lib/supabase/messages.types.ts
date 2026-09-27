@@ -2,6 +2,8 @@
 export type MessageSenderRole = "parent" | "child";
 export type ParentChildPair = {
   id: string;
+  child_name: string;
+  child_avatar_reference: string | null;
   parent_id: string;
   child_id: string;
   created_at: string;
@@ -9,6 +11,7 @@ export type ParentChildPair = {
 
 export type ComicMessage = {
   id: string;
+  content_hash: string | null;
   pair_id: string;
   sender_role: MessageSenderRole;
   title: string;
@@ -36,11 +39,22 @@ export type ComicMessageInsert = Pick<
     >
   >;
 
+type ServerTable<T> = { Row: T; Insert: T; Update: Partial<T>; Relationships: [] };
 export type MessagingTables = {
+  pairing_codes: ServerTable<{
+    code_hash: string;
+    parent_id: string;
+    child_name: string;
+    child_avatar_reference: string;
+    expires_at: string;
+    claimed_child_id: string | null;
+    pair_id: string | null;
+  }>;
+  request_limits: ServerTable<{ key: string; started_at: string; attempts: number }>;
   parent_child_pairs: {
     Row: ParentChildPair;
     Insert: Pick<ParentChildPair, "parent_id" | "child_id"> &
-      Partial<Pick<ParentChildPair, "id" | "created_at">>;
+      Partial<Pick<ParentChildPair, "id" | "created_at" | "child_name" | "child_avatar_reference">>;
     Update: Partial<ParentChildPair>;
     Relationships: [];
   };

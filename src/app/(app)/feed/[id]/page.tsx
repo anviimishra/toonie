@@ -51,7 +51,6 @@ export default function ComicPage() {
           return;
         }
         setState({ kind: "ready", item, now: Date.now() });
-        if (item.status === "new") void feed.markSeen(item.id).catch(() => {});
       })
       .catch(() => {
         if (active) setState({ kind: "error" });
@@ -128,7 +127,17 @@ export default function ComicPage() {
             aria-label={`${item.title}, a comic from ${item.sender.name}`}
             className="mx-auto flex max-w-sm flex-col gap-4 rounded-[28px] bg-white p-3 shadow-card ring-1 ring-orange-100/70"
           >
-            {item.format === "sticker" ? (
+            {item.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.imageUrl}
+                alt={item.title}
+                onLoad={() => {
+                  if (item.status === "new") void feed.markSeen(item.id).catch(() => {});
+                }}
+                className="aspect-square w-full object-contain"
+              />
+            ) : item.format === "sticker" ? (
               <StickerComic panels={item.panels} title={item.title} />
             ) : (
               item.panels.map((panel, i) => (
@@ -141,23 +150,42 @@ export default function ComicPage() {
                 />
               ))
             )}
-            {item.format === "sticker" && (
-              <button
-                className="py-3 font-bold underline"
-                onClick={() => {
-                  setDownloadError(null);
-                  void downloadSticker(item.panels, item.title, true).catch(() =>
-                    setDownloadError("Couldn't download the sticker. Please try again."),
-                  );
-                }}
+            {item.printUrl ? (
+              <a
+                href={item.printUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="py-3 text-center font-bold underline"
               >
-                Download black-and-white print PNG
-              </button>
+                Open black-and-white print PNG
+              </a>
+            ) : (
+              item.format === "sticker" && (
+                <button
+                  className="py-3 font-bold underline"
+                  onClick={() => {
+                    setDownloadError(null);
+                    void downloadSticker(item.panels, item.title, true).catch(() =>
+                      setDownloadError("Couldn't download the sticker. Please try again."),
+                    );
+                  }}
+                >
+                  Download black-and-white print PNG
+                </button>
+              )
             )}
             {downloadError && (
               <p role="alert" className="text-sm text-red-600">
                 {downloadError}
               </p>
+            )}
+            {item.audioUrl && (
+              <audio
+                controls
+                src={item.audioUrl}
+                aria-label="Original voice recording"
+                className="w-full"
+              />
             )}
             {item.audio && <StoryAudio audio={item.audio} />}
             {item.transcript && (

@@ -22,7 +22,7 @@ export type Credentials = {
 export interface AuthAdapter {
   /** The signed-in user, or null. */
   currentUser(): Promise<AuthUser | null>;
-  signUp(input: Credentials & { displayName: string }): Promise<AuthUser>;
+  signUp(input: Credentials & { displayName: string }): Promise<AuthUser | null>;
   signIn(input: Credentials): Promise<AuthUser>;
   signOut(): Promise<void>;
   /** Subscribe to sign-in and sign-out. Returns an unsubscribe function. */

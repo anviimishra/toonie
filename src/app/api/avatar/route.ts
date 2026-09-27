@@ -1,3 +1,5 @@
+import { apiError, requireUser, requireParent } from "@/lib/server-auth";
+import { limitRequest } from "@/lib/pairing";
 import { referenceSchema } from "@/lib/ai/reference";
 import { drawPanel } from "@/lib/ai/pipeline";
 import { AVATAR_STYLE } from "@/lib/ai/prompts";
@@ -6,6 +8,13 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  try {
+    const { user } = await requireUser(request);
+    requireParent(user);
+    await limitRequest(request, user, "avatar", 15);
+  } catch (e) {
+    return apiError(e);
+  }
   const body = await request.json().catch(() => null);
   const photo = referenceSchema.safeParse(body?.photo);
   if (!photo.success)

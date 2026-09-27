@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api-client";
 import { normalizeAvatar } from "./config";
 import { checkPhoto, photoToDataUrl } from "./photo";
 import { DEFAULT_AVATAR_CONFIG } from "./config";
@@ -46,7 +47,7 @@ export function createLocalAvatars(key: string = AVATAR_KEY): AvatarAdapter {
       const check = checkPhoto(file);
       if (!check.ok) throw new Error(check.reason);
       const photoDataUrl = await photoToDataUrl(file, 768);
-      const response = await fetch("/api/avatar", {
+      const response = await apiFetch("/api/avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ photo: photoDataUrl }),

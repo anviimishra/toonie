@@ -8,7 +8,8 @@ import { SenderAvatar } from "./SenderAvatar";
 export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   const isNew = item.status === "new";
   const when = formatRelativeTime(item.createdAt, now);
-  const panels = `${item.panels.length} panel${item.panels.length === 1 ? "" : "s"}`;
+  const count = item.panelCount ?? item.panels.length;
+  const panels = `${count} panel${count === 1 ? "" : "s"}`;
 
   return (
     <Link
@@ -48,7 +49,14 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
 
       <h2 className="mt-3 mb-3 text-xl leading-tight font-black text-stone-900">{item.title}</h2>
 
-      {item.format === "sticker" ? (
+      {item.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={item.title}
+          className="aspect-square w-full rounded-xl object-contain"
+        />
+      ) : item.format === "sticker" ? (
         <StickerComic panels={item.panels} title={item.title} />
       ) : (
         <ComicThumbnail panels={item.panels} />
