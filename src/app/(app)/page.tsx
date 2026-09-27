@@ -14,14 +14,10 @@ import {
 } from "@/features/stories";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  loadInput,
-  saveInput,
-  clearDraft,
-  loadDraft,
-  saveDraft,
-  sendToFeed,
-} from "@/features/stories/storage";
+import { loadInput, saveInput, clearDraft, loadDraft, saveDraft } from "@/features/stories/storage";
+import { apiFetch } from "@/lib/api-client";
+import { deliverStory, getPairs } from "@/features/messages/client";
+import type { ParentChildPair } from "@/lib/supabase/types";
 import { avatars } from "@/features/avatar";
 import { avatarReference, describeAvatar } from "@/features/avatar/reference";
 import { readComicStream } from "@/features/stories/generate";
@@ -32,6 +28,7 @@ import {
   textSource,
   legacySource,
   prepareStory,
+  type PreparedStory,
   type StorySource,
 } from "@/features/stories/submission";
 import { downloadSticker, renderSticker } from "@/features/stories/export-sticker";
@@ -55,9 +52,26 @@ export default function RecordPage() {
   const router = useRouter();
   const [source, setSource] = useState<StorySource>(textSource);
   const [comicSource, setComicSource] = useState<StorySource>(legacySource);
+  const [pairs, setPairs] = useState<ParentChildPair[]>([]);
+  const [pairId, setPairId] = useState("");
+  useEffect(() => {
+    let active = true;
+    getPairs()
+      .then((items) => {
+        if (active) {
+          setPairs(items);
+          setPairId(items[0]?.id ?? "");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const [comicId, setComicId] = useState("");
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
+  const preparedStory = useRef<PreparedStory | undefined>(undefined);
   const [restoring, setRestoring] = useState(true);
   const [mode, setMode] = useState<DraftMode>("talk");
   const [text, setText] = useState("");
@@ -85,6 +99,7 @@ export default function RecordPage() {
           setSource(draft.source ?? legacySource());
           setComicSource(draft.source ?? legacySource());
           setComicId(draft.id);
+          preparedStory.current = draft.submission;
           setText(draft.comic.transcript);
           setMode(draft.source?.audio ? "talk" : "type");
           setPanelCount(Math.min(4, draft.comic.panels.length));
@@ -160,7 +175,7 @@ export default function RecordPage() {
         form.set("audio", storyAudio, `story.${audioExtension(storyAudio.type)}`);
       else form.set("text", text);
       setStage(mode === "talk" ? "Listening to your story…" : "Writing your comic…");
-      const response = await fetch("/api/comics", {
+      const response = await apiFetch("/api/comics", {
         method: "POST",
         body: form,
         signal: controller.signal,
@@ -181,6 +196,7 @@ export default function RecordPage() {
       setMode(sentSource.kind === "voice" ? "talk" : "type");
       const id = crypto.randomUUID();
       setComicId(id);
+      preparedStory.current = undefined;
       try {
         await saveDraft({ id, comic: result, source: sentSource });
       } catch {
@@ -205,13 +221,16 @@ export default function RecordPage() {
     setProblem(null);
     try {
       const submission =
-        comic.format === "sticker"
+        preparedStory.current ??
+        (comic.format === "sticker"
           ? await prepareStory(comicId, comic, comicSource, renderSticker)
-          : undefined;
-      await sendToFeed(
-        { id: comicId, comic, source: comicSource, submission },
-        user?.displayName ?? "You",
-      );
+          : undefined);
+      if (!submission) throw new Error("Please generate a new sticker to send.");
+      preparedStory.current = submission;
+      if (!pairId) throw new Error("Connect a child device in Settings first.");
+      await saveDraft({ id: comicId, comic, source: comicSource, submission });
+      await deliverStory(submission, pairId);
+      await clearDraft().catch(() => {});
       router.push(`/feed/${comicId}`);
     } catch (error) {
       setProblem(error instanceof Error ? error.message : "Couldn't save to your feed.");
@@ -221,6 +240,7 @@ export default function RecordPage() {
     }
   }
   function startOver() {
+    preparedStory.current = undefined;
     void clearDraft().catch(() => setProblem("Couldn't clear the saved preview."));
     recorder.reset();
     setSource(textSource());
@@ -314,15 +334,36 @@ export default function RecordPage() {
           </p>
         )}
         <p className="mb-4 text-sm text-stone-600">
-          Send saves this comic to your feed on this browser. Sharing with a receiver comes later.
+          Send delivers this comic and its story to your connected child.
         </p>
         {needsAvatar && (
           <Link href="/me" className="mt-3 block text-center font-bold underline">
             Create my avatar
           </Link>
         )}
-        <Button onClick={approve} disabled={saving} className="w-full">
-          {saving ? "Saving…" : "Send to my feed"}
+        {pairs.length ? (
+          <label className="mb-4 block font-bold">
+            Send to
+            <select
+              value={pairId}
+              disabled={saving}
+              onChange={(e) => setPairId(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-stone-300 p-3"
+            >
+              {pairs.map((pair) => (
+                <option key={pair.id} value={pair.id}>
+                  {pair.child_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <Link href="/me" className="mb-4 block font-bold underline">
+            Connect a child in Settings
+          </Link>
+        )}
+        <Button onClick={approve} disabled={saving || !pairId} className="w-full">
+          {saving ? "Saving…" : "Send to child"}
         </Button>
         <button onClick={send} disabled={saving} className="mt-4 w-full py-3 font-bold">
           Draw again

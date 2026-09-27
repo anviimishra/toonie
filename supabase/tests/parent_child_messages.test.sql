@@ -34,11 +34,19 @@ select ok((select relrowsecurity from pg_class where oid='public.comic_messages'
 set local role authenticated;
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000001';
 select is((select count(*)::int from public.parent_child_pairs), 1, 'parent sees only own pair');
-select lives_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','parent')$$, 'parent sends typed comic');
-select lives_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','parent',true)$$, 'parent sends voice, raw transcript and comic');
+select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','parent')$$, '42501', null, 'Client sends must use the upload-verifying server');
+reset role;
+select pg_temp.send_message('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','parent');
+set local role authenticated;
+select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','parent',true)$$, '42501', null, 'Client sends must use the upload-verifying server');
+reset role;
+select pg_temp.send_message('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000001','parent',true);
+set local role authenticated;
 select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001','child')$$, '42501', null, 'parent cannot impersonate child');
 select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000002','parent')$$, '42501', null, 'parent cannot send to unrelated pair');
+reset role;
 select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','parent')$$, '23505', null, 'retry ID cannot duplicate a message');
+set local role authenticated;
 select throws_ok($$insert into public.parent_child_pairs(parent_id,child_id) values ('10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000004')$$, '42501', null, 'clients cannot claim another child');
 select throws_ok($$update public.comic_messages set title='Changed'$$, '42501', null, 'sent content immutable to clients');
 select throws_ok($$delete from public.comic_messages$$, '42501', null, 'clients cannot delete messages');
@@ -47,7 +55,10 @@ select is((select count(*)::int from public.comic_messages where read_at is not 
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000002';
 select is((select count(*)::int from public.comic_messages), 2, 'child receives parent messages');
-select lives_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001','child',true)$$, 'child sends voice transcript and comic back');
+select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001','child',true)$$, '42501', null, 'Client sends must use the upload-verifying server');
+reset role;
+select pg_temp.send_message('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000001','child',true);
+set local role authenticated;
 select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000001','parent')$$, '42501', null, 'child cannot impersonate parent');
 update public.comic_messages set read_at=now() where sender_role='parent';
 select is((select count(*)::int from public.comic_messages where read_at is not null), 2, 'child acknowledges incoming messages');
@@ -59,7 +70,10 @@ select is((select count(*)::int from public.comic_messages where read_at is not 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000003';
 select is((select count(*)::int from public.comic_messages), 0, 'unrelated family sees no messages');
 update public.comic_messages set read_at=now();
-select lives_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000002','parent')$$, 'other family can send within own pair');
+select throws_ok($$select pg_temp.send_message('30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000002','parent')$$, '42501', null, 'Client sends must use the upload-verifying server');
+reset role;
+select pg_temp.send_message('30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000002','parent');
+set local role authenticated;
 
 reset role;
 -- Constraint checks apply to backend/service writes too.

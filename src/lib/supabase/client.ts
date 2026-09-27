@@ -36,3 +36,17 @@ export function resetSupabaseBrowser(): void {
 export function deliveriesChannel(capsuleId: string): string {
   return `deliveries:${capsuleId}`;
 }
+
+// Separate child device session allows parent and child tabs on one demo browser.
+let childCached: BrowserClient | undefined;
+export function supabaseChild(): BrowserClient {
+  if (!childCached) {
+    const env = publicEnv();
+    childCached = createClient<Database>(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      { auth: { storageKey: "toonie.child.auth", detectSessionInUrl: false } },
+    );
+  }
+  return childCached;
+}

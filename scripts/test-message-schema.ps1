@@ -35,12 +35,14 @@ grant all on storage.buckets, storage.objects to service_role;
     Invoke-Docker cp $migrationFile.FullName "${testContainer}:/tmp/migration.sql"
     Invoke-Docker exec $testContainer psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/migration.sql
   }
-  Invoke-Docker cp (Join-Path $repoRoot 'supabase/tests/parent_child_messages.test.sql') "${testContainer}:/tmp/message-tests.sql"
-  $testOutput = & docker exec $testContainer psql -U postgres -d postgres -v ON_ERROR_STOP=1 -At -f /tmp/message-tests.sql
-  $testExit = $LASTEXITCODE
-  $testOutput | Write-Output
-  if ($testExit -ne 0 -or ($testOutput -match '^not ok') -or !($testOutput -match '^1\.\.[0-9]+$')) {
-    throw 'Message schema tests failed.'
+  foreach ($testFile in (Get-ChildItem -LiteralPath (Join-Path $repoRoot 'supabase/tests') -Filter '*.test.sql' | Sort-Object Name)) {
+    Invoke-Docker cp $testFile.FullName "${testContainer}:/tmp/message-tests.sql"
+    $testOutput = & docker exec $testContainer psql -U postgres -d postgres -v ON_ERROR_STOP=1 -At -f /tmp/message-tests.sql
+    $testExit = $LASTEXITCODE
+    $testOutput | Write-Output
+    if ($testExit -ne 0 -or ($testOutput -match '^not ok') -or !($testOutput -match '^1\.\.[0-9]+$')) {
+      throw 'Message schema tests failed.'
+    }
   }
 } finally {
   # This exact container was created by this script and contains test data only.

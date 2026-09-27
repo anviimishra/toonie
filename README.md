@@ -1,128 +1,41 @@
 # Toonie
 
-Talk about your day, get a comic, and print it on a little robot.
+Record or type a story, preview a Grok-generated comic starring your saved avatar, and send it to your child's connected browser.
 
-1. Record a story in the app and pick how many panels you want.
-2. AI turns it into a comic.
-3. Review the completed comic, then choose **Send to my feed** to keep it as a sent comic.
+## Demo setup
 
-The current testing flow stores avatars, previews and sent comics in this browser.
-Receiving on another device and robot delivery are future integrations; the received
-feed entries are still examples.
+1. Install dependencies, copy `.env.example` to `.env.local`, and fill in the Supabase and xAI keys. Keep secret keys server-only.
+2. Apply migrations in filename order. Existing installations with the two message migrations applied need `supabase/migrations/20260927063038_pairing_and_delivery.sql`, followed by `20260927071932_restore_auth_profiles.sql` to restore the table expected by the signup trigger.
+3. Enable Email/password and Anonymous Sign-Ins in Supabase Authentication. If email confirmation is enabled, confirm the signup email before signing in. Configure Supabase's Site URL and allowed redirect URLs for your deployed origin and `http://localhost:3000/login`.
+4. Run `npm run dev` and open http://localhost:3000/start.
+5. Choose Parent, create an account/sign in, and save your own avatar and the child's avatar in Me. In Settings, enter the child's name and generate a five-digit code.
+6. Open the Child path on the receiving browser and enter the code within ten minutes. Parent and child use separate sessions, so two tabs on the same browser also work.
+7. On the parent side, record (tap to start/stop) or type, make a sticker, review it, select the child, and send. The child receives a mail indicator and opens the actual comic, transcript, and optional recording.
+8. The child can tap the face to record, tap again to stop, preview their generated comic, then send a reply to the parent feed.
 
-## Comic creation
+The database stores the generated title, required transcript, optional original speech transcript, native recording, and paths to the color comic and black-and-white print image. Transcription happens on the backend. Sending succeeds only after every file is uploaded and verified. Failed sends can be retried with the same message ID.
 
-Save an avatar in **Me** first. Built avatars use the exact displayed drawing as
-an image reference; photo avatars are drawn by Grok and the saved drawing becomes
-the reference. Record or type a story, select 1–4 panels (3 by default), and choose
-**Make my sticker**. With voice, tap to start and stop, then choose **Make my sticker**. The original
-recording is sent to `/api/comics`; the backend transcribes it before scripting and drawing. The loading screen reports scripting and
-completed panel counts. Review the full comic before sending, or draw again.
+## Comics and printing
 
-Each new comic is one square composition for a 2″ × 2″ sticker. Three panels use
-two squares on top and a wide ending below; four use a 2×2 grid. Artwork remains
-in colour in the app. There are no printed captions; the transcript remains under
-**Your original story**. **Black-and-white print preview** is optional and uses
-the same conversion as **Download black-and-white print PNG**.
+New comics are square compositions for 2″ × 2″ stickers, with 1–4 panels (3 by default). They remain colored in the browser and use minimal lettering; the story text is shown separately. The shared prompt is in `src/lib/ai/prompts.ts`. The saved avatar reference is supplied for every image. AI output can vary, so both sides preview before sending.
 
-The PNG is a 1200×1200 square master with margins. Select 2″ × 2″ in the printer
-workflow; physical output and resampling still need testing on the HelloBlink
-thermal hardware. Its native dot width/protocol have not been established, so the
-app does not send directly to that printer yet. Existing older comics retain their
-original layout.
+Black-and-white print PNGs are 1200×1200 masters. HelloBlink printer transport, native resolution, and physical output still need hardware testing; the app does not send directly to the printer.
 
-Speech-to-text is reused from `origin/anvii-child-mode` at `aa0321e`:
-`src/lib/ai/transcribe.ts` and `POST /api/transcribe`. It uses only AI environment
-settings, includes a request timeout, and avoids logging story transcripts. The
-comic API's audio path uses this same service; the receiving UI was not merged.
+Parent drafts and avatars remain browser-local. Completed messages and their media are in Supabase and available on connected devices. The paired child's avatar reference is stored with the pair; use Settings → sync avatar after changing it. Keep the child page open while generating/reviewing an unsent reply. Recording uploads are limited to 3 MB for the hosted request limit.
 
-`XAI_API_KEY` in `.env.local` is read only by server routes. The optional model
-overrides are documented in `.env.example`. The development server needs outbound
-HTTPS access to `api.x.ai`. Supabase is not required for this local testing flow.
+## Backend
 
-The shared template lives in `src/lib/ai/prompts.ts`: a visual story script,
-exact panel count, warm flat-colour cartoon art based on the existing feed, no
-generated lettering, and the same saved avatar reference for every image edit.
-Sticker captions are forced empty. Image generation can still vary; the preview
-lets you check the result before approving it. A failed panel blocks completion.
+See [the messaging contract](docs/parent-child-messages.md). The active browser flow uses `parent_child_pairs`, `comic_messages`, private `message-media` storage, and two service-only pairing/rate-limit tables. Earlier capsule/device tables remain for the separate robot prototype.
 
-Completed previews and sent comics are stored in IndexedDB with embedded images,
-so they survive refreshes without depending on temporary image URLs. This storage
-is specific to the browser and origin (`localhost` and `127.0.0.1` are separate).
-Keep the page open during generation. Sending here does not deliver to another
-person or print anything yet.
+Each API verifies the Supabase user. Reads and read receipts use participant-scoped RLS. Writes use server authorization and signed upload tickets. The child uses anonymous Auth, not an email account. Clearing its browser session requires another pairing code. Five-digit codes expire after ten minutes and can be claimed once; attempts are rate-limited.
 
-## Setup
+Realtime refreshes the feed, with polling every 30 seconds and refresh on reconnect/visibility as fallback. Signed media URLs last one hour and are renewed when the inbox reloads.
 
-```bash
-npm install
-cp .env.example .env.local   # then fill in the secret keys
-npm run dev
-```
+Set the same `.env.example` variables in your deployment. Configure sufficient function duration for comic generation (`maxDuration = 300`); provider/network errors appear in the preview workflow. The app needs outbound access to Supabase and xAI. Production email redirects must use the production origin.
 
-Open http://localhost:3000.
+## Checks
 
-## Database
-
-The schema lives in `supabase/migrations`. Apply it to a Supabase project once:
-
-```bash
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push
-```
-
-That creates five tables (`capsules`, `members`, `devices`, `stories`,
-`deliveries`), the `audio` and `comics` storage buckets, and publishes
-`deliveries` to Realtime so a robot is notified the moment a comic is ready.
-
-Row level security is on for every table. The server uses the secret key and
-bypasses it; the browser and the robot use the publishable key and can read
-only `deliveries`, which holds ids and a status but no story content.
-
-Two clients wrap it:
-
-| Import                                           | Key         | Use from                     |
-| ------------------------------------------------ | ----------- | ---------------------------- |
-| `supabaseServer()` from `@/lib/supabase/server`  | secret      | route handlers, `features/*` |
-| `supabaseBrowser()` from `@/lib/supabase/client` | publishable | client components, Realtime  |
-
-`supabaseServer()` throws if it is ever called in the browser, so the secret key
-cannot leak into a bundle. After changing the schema, regenerate the types:
-
-```bash
-npx supabase gen types typescript --project-id <ref> > src/lib/supabase/types.ts
-```
-
-`src/lib/supabase/schema.test.ts` fails if `types.ts` and the migration disagree.
-
-## Scripts
-
-| Command          | What it does                                       |
-| ---------------- | -------------------------------------------------- |
-| `npm run dev`    | Start the dev server                               |
-| `npm run build`  | Production build                                   |
-| `npm run check`  | Lint + typecheck + tests (run before opening a PR) |
-| `npm run format` | Format all files with Prettier                     |
-
-## Folder layout
-
-```
-src/
-  app/          Pages and API routes (kept thin)
-  components/   Reusable UI pieces
-  features/     Logic for each feature (stories, delivery, devices)
-  lib/          Shared helpers (env, supabase, ai, comic image tools)
-  types/        Shared shapes for a comic (panels, print size)
-docs/           Robot API contract
-robot/          Reference Python client for the Raspberry Pi
-```
-
-### Delivery handoff after the receiver merge
-
-Parent flow stays `/welcome` → `/start` → `/login` → `/`; child flow stays `/start` → `/face`. Both recorders use tap to start and tap to stop. Auth is still the demo adapter. The merged robot state hook references `/api/robot-state`, which has not yet been implemented; its mail flag does not carry a comic.
-
-Parent generation saves the original Blob before uploading it to the comic endpoint. The backend returns the speech transcript with the comic. Generated previews retain that source with the final edited transcript and Grok-generated title. Sending atomically saves the local feed entry and prepared media. Playback is available in preview and sent detail. Old comics cannot recover audio that was never saved.
-
-The backend integration seam is `getSubmissionFormData(id)` in `src/features/stories/storage.ts`. It returns `metadata` (versioned JSON: clientStoryId, title, transcript, originalTranscript, source, audioDurationMs, MIME types, panelCount, createdAt), `comic_image` (color PNG), `print_image` (black-and-white PNG), and optional `audio` (original recording, native MIME). Typed stories have no audio. Files persist locally in IndexedDB; clearing browser storage removes them. This does not upload or mark a remote delivery successful.
-
-Once the schema lands: use authenticated server identity and an authorized parent/child pairing; upload the media to private storage; store their paths with title/transcript and delivery status; use clientStoryId for retry deduplication. Publish a ready comic only after uploads succeed. The child must query its pending comics initially and on reconnect, subscribe to changes, open the actual comic on mail tap, and acknowledge only after successful display. Do not rely on the shared `default` robot ID or a boolean mail flag to identify a recipient or comic. Keep remote upload/delivery status distinct from the existing local sent feed.
+- `npm run check`: lint, TypeScript, and unit tests.
+- `npm run build`: production build.
+- `powershell -File scripts/test-message-schema.ps1`: isolated Docker Postgres/pgTAP migration and authorization tests.
+- `node --env-file=.env.local scripts/smoke-delivery.mjs`: live Auth, pairing, upload, delivery in both directions, and read-receipt smoke test against the running app. Creates temporary users and files, then removes them. Set `SMOKE_BASE_URL` to test another app origin connected to the same Supabase project.

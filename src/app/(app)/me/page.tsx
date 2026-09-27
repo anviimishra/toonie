@@ -1,5 +1,6 @@
 "use client";
 
+import { PairingSettings } from "@/components/me/PairingSettings";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { ChevronRightIcon, FaceIcon, LanguageIcon } from "@/components/icons";
@@ -68,6 +69,7 @@ export default function SettingsPage() {
           <LanguageSettings />
         </Section>
 
+        <PairingSettings />
         <AccountCard avatar={mine} />
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Comic } from "@/types";
 import type { FeedItem } from "@/features/feed/types";
 
@@ -11,8 +12,10 @@ export type ComicDraft = {
 
 // IndexedDB accommodates full-resolution images without localStorage's small quota.
 async function database(): Promise<IDBDatabase> {
+  const { data } = await supabaseBrowser().auth.getSession();
+  if (!data.session) throw new Error("Sign in to open your drafts.");
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("toonie-comics", 1);
+    const request = indexedDB.open(`toonie-comics:${data.session.user.id}`, 1);
     request.onupgradeneeded = () => {
       request.result.createObjectStore("drafts");
       request.result.createObjectStore("sent", { keyPath: "id" });

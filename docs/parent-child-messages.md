@@ -1,79 +1,49 @@
 # Parent–child messages
 
-Two new tables handle both directions. They are independent of the older `capsules`, `stories`, `deliveries`, and `robot_states` prototype, so this migration does not replace existing data or change the current browser flow.
+## Setup and migration order
 
-| Table | Purpose | Main fields |
-| --- | --- | --- |
-| `parent_child_pairs` | Connect one parent identity to one child identity | `id`, `parent_id`, `child_id`, `created_at` |
-| `comic_messages` | Store a completed message in either direction | `id`, `pair_id`, `sender_role`, `title`, `transcript`, `comic_path`, optional `audio_path`, `created_at`, `read_at` |
+For an existing installation, do not rerun migrations already applied. Apply `20260927063038_pairing_and_delivery.sql` after the parent-child message and backend-transcription migrations, then `20260927071932_restore_auth_profiles.sql`. The latter restores the missing profile table required by the hosted signup trigger and includes that trigger in migration history. A fresh installation applies all files in `supabase/migrations` in filename order.
 
-`parent_id` and `child_id` reference Supabase `auth.users`. A child device can use a Supabase anonymous Auth session, so the child does not need an email/password screen. The current demo login and role-selection screen do **not** create these identities yet. Each pair has two distinct identities. Multiple verified pairs can share a parent or child; `pair_id` selects the intended relationship, and the opposite endpoint is the recipient.
+Enable Supabase Email/password and Anonymous Sign-Ins. Configure allowed email confirmation redirects for `/login` on each app origin. The server needs `SUPABASE_SECRET_KEY`; the browser uses only the public URL and publishable key.
 
-Pair creation is server-only after confirming the pairing. For an initial demo, provision the two real Auth identities and insert their pair through a trusted server/admin connection. Never allow a client to supply arbitrary user IDs and claim a relationship. Re-pairing creates a new pair; do not change endpoints of a pair that already has messages.
+## Identity and pairing
 
-## Message fields
+Parents authenticate by email/password. Children use an anonymous Supabase session in a separate browser storage namespace, permitting parent and child tabs on one device.
 
-- `id`: UUID; reuse the parent's existing `clientStoryId` on retries. A primary key prevents duplicate messages. A child creates its UUID once before sending.
-- `pair_id`: the selected parent–child relationship.
-- `sender_role`: `parent` or `child`. The database checks that the session belongs to that endpoint. No separate child-message table is needed.
-- `title`: required Grok-generated title, 1–80 characters.
-- `transcript`: required text, 1–4,000 characters, whether typed or transcribed. This is the final text used to generate the comic.
-- `original_transcript`: optional unedited speech-to-text output for a voice message.
-- `comic_path`: required full-color PNG path.
-- `print_path`: optional black-and-white PNG path.
-- `audio_path`: optional original recording path; null for a typed message.
-- `audio_mime_type`: required when audio exists; preserve the recording's native type, including codec parameters.
-- `audio_duration_ms`: optional duration; null when no audio exists.
-- `panel_count`: 1–4.
-- `created_at`: timestamp supplied by the database by default.
-- `read_at`: initially null. Only the recipient can change this field; sent content cannot be edited by clients.
+A parent saves the child avatar and requests a code from `POST /api/pairing/code`. Five-digit codes are cryptographically generated, stored as keyed hashes, expire in ten minutes, and are limited to five requests per ten minutes. Creating a new code invalidates that parent's unused codes. `POST /api/pairing/claim` requires an anonymous child session and atomically creates a pair. A used code cannot connect another child; retrying the same claim returns the same pair. Claims are limited per identity and address. Vercel's trusted forwarded address is used in production; local development shares an address limit.
 
-## Files and sending
+`parent_child_pairs` contains the parent/child Auth IDs, child display name, and child avatar reference. Code claims never accept arbitrary user IDs. The service-only `pairing_codes` and `request_limits` tables have RLS and no browser grants. SQL functions use an empty search path and service-only execute grants.
 
-Files belong in the private `message-media` bucket. Store paths in the database, not base64 or expiring signed URLs:
+`GET /api/pairs` uses RLS. Parents can sync a new child avatar through `PATCH /api/pairs`; the child generation route reads that saved reference server-side.
 
-```text
-<pair_id>/<message_id>/comic.png
-<pair_id>/<message_id>/print.png     (optional)
-<pair_id>/<message_id>/voice         (optional, native audio Content-Type)
-```
+## Message data
 
-The schema enforces these paths so a message cannot point to another family's media. File uploads are server-only. Authenticated participants can read only files referenced by messages they can read, including through short-lived signed URLs. There is no public access to the new bucket.
+`comic_messages` stores:
 
-The comic PR provides `getSubmissionFormData(id)` in `src/features/stories/storage.ts`. Map its fields as follows:
+- UUID `id` reused for retries, `pair_id`, and server-derived `sender_role`.
+- Grok-generated `title`, required final `transcript`, optional raw `original_transcript`.
+- `comic_path`, `print_path`, optional `audio_path`, native `audio_mime_type`, and optional `audio_duration_ms`.
+- `panel_count`, database `created_at`, recipient-only `read_at`, and immutable-payload `content_hash`.
 
-| Prepared payload | Database/storage |
-| --- | --- |
-| `metadata.clientStoryId` | `comic_messages.id` |
-| `metadata.title`, `metadata.transcript` | `title`, `transcript` |
-| `metadata.originalTranscript` | `original_transcript` for voice; otherwise null |
-| `metadata.audioMimeType`, `metadata.audioDurationMs` | `audio_mime_type`, `audio_duration_ms` |
-| `metadata.panelCount` | `panel_count` |
-| `comic_image` | upload to `comic.png`; save `comic_path` |
-| `print_image` | upload to `print.png`; save `print_path` |
-| optional `audio` | upload to `voice` with native Content-Type; save `audio_path` |
+Audio is sent to `/api/comics` and transcribed on the backend before drawing. Typed stories have text and no audio. The original recording is retained with the returned transcript. Browser recording uploads are capped at 3 MB.
 
-The future send endpoint should:
+## Upload and delivery
 
-1. Verify the Supabase session and selected pair; derive `sender_role` from that session rather than trusting the submitted role.
-2. Validate the payload and upload all required files. Keep the service key server-side. Use `upsert: false`; retries must verify existing files rather than overwrite a sent comic.
-3. Insert the completed `comic_messages` row only after every required upload succeeds. If a repeated ID already exists, verify that it belongs to the same sender/pair and treat the matching submission as already sent. A changed story gets a new ID.
-4. Report success only after that row exists. Clean up orphan uploads after failures through a server-side maintenance process.
+1. Prepare the full-color square PNG, black-and-white print PNG, and optional native recording. Compute SHA-256 and byte count for each.
+2. `POST /api/messages/prepare` validates identity, pair membership, metadata, and limits. It returns private Storage signed upload tokens and an expiring, user-bound signed delivery ticket.
+3. Upload directly to the private `message-media` bucket using those tokens, avoiding the application server's request-body limit. Paths are `<pair_id>/<message_id>/comic.png`, `print.png`, and optional `voice`. Existing files cannot be overwritten.
+4. `POST /api/messages/send` verifies the signed ticket and downloads/checks every object's bytes and digest. Only then does it insert the message row. Retries with the same ID and exact payload are idempotent; conflicting content or sender is rejected.
 
-The child uses precisely the same route and fields after transcription and comic generation. Its sender role is `child`, and the pair determines the parent target.
+Browser roles cannot insert messages directly. Participants can read only files referenced by messages visible to them. An uploaded file without a finalized message does not become visible to the recipient. Abandoned incomplete uploads currently require administrative cleanup.
 
-## Receiving
+## Receiving and replying
 
-Fetch messages for the selected pair on initial load and after reconnect. For the parent's inbox filter `sender_role = 'child'`; for the child's inbox filter `sender_role = 'parent'`. Order by `created_at` and `id`; filter `read_at is null` for pending mail.
+`GET /api/messages` returns up to 100 newest accessible messages with one-hour signed media URLs. Both endpoints fetch initially, refresh on Realtime events, poll every 30 seconds, and refresh on reconnect/page visibility. The receiver displays a mail indicator for unread incoming messages. Acknowledgement occurs only after the comic image loads successfully through `POST /api/messages/read`; the sender cannot mark its own message read.
 
-Subscribe to `postgres_changes` for `comic_messages` with `pair_id=eq.<pair_id>`. The migration adds the table to the Realtime publication; RLS still controls which events a session may receive. Treat notifications as a reason to refresh the inbox, not as the only source of messages. Display the comic and voice playback, then set `read_at` after successful display. Do not use the shared `default` robot ID or the boolean mail flag to identify a message.
+The child records using tap-to-start/stop, generates with the paired child avatar, reviews the comic, and sends through the same verified delivery endpoints. The parent sees it as received, with recording playback and transcript. This browser flow does not depend on the old shared robot ID or `/api/robot-state` prototype.
 
-## Validation and application
+## Verification
 
-Migration: `supabase/migrations/20260927053235_parent_child_messages.sql`.
+`scripts/test-message-schema.ps1` runs all migrations and 59 pgTAP assertions in an isolated Docker database. It covers participant-only access, recipient-only receipts, private storage, immutable content, code claims/expiry/retries, and rate limits.
 
-With Docker running, execute `./scripts/test-message-schema.ps1` from PowerShell. It creates a disposable, network-isolated PostgreSQL container, runs the migrations, and runs 37 pgTAP assertions for both sending directions, data requirements, retry IDs, media privacy, and participant permissions. Storage API tables are represented by a minimal fixture; this test does not exercise Storage HTTP uploads or Realtime WebSocket delivery.
-
-The same test SQL is in `supabase/tests/parent_child_messages.test.sql` for a complete local Supabase stack. It rolls back its fixture data. The hosted migration must be applied through an authenticated Supabase management connection, after checking migration history and table/bucket name conflicts. This commit does not wire the app's Send button or child robot to the database.
-
-References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Storage access control](https://supabase.com/docs/guides/storage/security/access-control).
+`scripts/smoke-delivery.mjs` exercises the running application against hosted Supabase with temporary accounts and media. It verifies real Auth, code pairing, both delivery directions, exact image/audio retrieval, missing-upload rejection, retry deduplication, and receipts. It does not spend xAI image-generation credits.

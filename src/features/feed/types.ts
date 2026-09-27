@@ -19,6 +19,11 @@ export type FeedItem = {
   format?: "sticker";
   transcript?: string;
   audio?: Blob | null;
+  imageUrl?: string;
+  audioUrl?: string;
+  printUrl?: string;
+  panelCount?: number;
+  pairId?: string;
   id: string;
   direction?: "sent" | "received";
   sender: FeedSender;

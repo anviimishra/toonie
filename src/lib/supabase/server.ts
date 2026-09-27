@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { serverEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/env";
 import type { Database } from "./types";
 
 /**
@@ -24,8 +24,10 @@ export function supabaseServer(): ServerClient {
   }
 
   if (!cached) {
-    const env = serverEnv();
-    cached = createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+    const env = publicEnv();
+    const secret = process.env.SUPABASE_SECRET_KEY;
+    if (!secret) throw new Error("Missing SUPABASE_SECRET_KEY");
+    cached = createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, secret, {
       // No user sessions here: this client is one long-lived service identity.
       auth: { persistSession: false, autoRefreshToken: false },
     });
