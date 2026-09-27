@@ -15,8 +15,8 @@ feed entries are still examples.
 Save an avatar in **Me** first. Built avatars use the exact displayed drawing as
 an image reference; photo avatars are drawn by Grok and the saved drawing becomes
 the reference. Record or type a story, select 1–4 panels (3 by default), and choose
-**Make my sticker**. With voice, tap to start and stop, choose **Review recording**,
-then edit the transcript before drawing. The loading screen reports scripting and
+**Make my sticker**. With voice, tap to start and stop, then choose **Make my sticker**. The original
+recording is sent to `/api/comics`; the backend transcribes it before scripting and drawing. The loading screen reports scripting and
 completed panel counts. Review the full comic before sending, or draw again.
 
 Each new comic is one square composition for a 2″ × 2″ sticker. Three panels use
@@ -121,7 +121,7 @@ robot/          Reference Python client for the Raspberry Pi
 
 Parent flow stays `/welcome` → `/start` → `/login` → `/`; child flow stays `/start` → `/face`. Both recorders use tap to start and tap to stop. Auth is still the demo adapter. The merged robot state hook references `/api/robot-state`, which has not yet been implemented; its mail flag does not carry a comic.
 
-Parent voice review saves the original Blob and raw speech transcript in IndexedDB. Generated previews retain that source with the final edited transcript and Grok-generated title. Sending atomically saves the local feed entry and prepared media. Playback is available in preview and sent detail. Old comics cannot recover audio that was never saved.
+Parent generation saves the original Blob before uploading it to the comic endpoint. The backend returns the speech transcript with the comic. Generated previews retain that source with the final edited transcript and Grok-generated title. Sending atomically saves the local feed entry and prepared media. Playback is available in preview and sent detail. Old comics cannot recover audio that was never saved.
 
 The backend integration seam is `getSubmissionFormData(id)` in `src/features/stories/storage.ts`. It returns `metadata` (versioned JSON: clientStoryId, title, transcript, originalTranscript, source, audioDurationMs, MIME types, panelCount, createdAt), `comic_image` (color PNG), `print_image` (black-and-white PNG), and optional `audio` (original recording, native MIME). Typed stories have no audio. Files persist locally in IndexedDB; clearing browser storage removes them. This does not upload or mark a remote delivery successful.
 
