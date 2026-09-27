@@ -1,9 +1,12 @@
 "use client";
 
+import { StoryAudio } from "@/components/StoryAudio";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ComicsIcon } from "@/components/icons";
+import { StickerComic } from "@/components/feed/StickerComic";
+import { downloadSticker } from "@/features/stories/export-sticker";
 import { ComicPanel } from "@/components/feed/ComicPanel";
 import { ChevronLeftIcon, ReplyIcon } from "@/components/feed/icons";
 import { LinkButton } from "@/components/feed/LinkButton";
@@ -34,6 +37,7 @@ function BackLink() {
  */
 export default function ComicPage() {
   const { id } = useParams<{ id: string }>();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
 
   useEffect(() => {
@@ -95,7 +99,8 @@ export default function ComicPage() {
             <p className="flex items-center gap-2 text-sm text-stone-600">
               <SenderAvatar sender={item.sender} className="size-6 text-[11px] ring-1" />
               <span className="truncate">
-                From <span className="font-extrabold text-stone-900">{item.sender.name}</span>
+                {item.direction === "sent" ? "Sent by" : "From"}{" "}
+                <span className="font-extrabold text-stone-900">{item.sender.name}</span>
                 {state.kind === "ready" && (
                   <span className="text-stone-400">
                     {" "}
@@ -123,15 +128,44 @@ export default function ComicPage() {
             aria-label={`${item.title}, a comic from ${item.sender.name}`}
             className="mx-auto flex max-w-sm flex-col gap-4 rounded-[28px] bg-white p-3 shadow-card ring-1 ring-orange-100/70"
           >
-            {item.panels.map((panel, i) => (
-              <ComicPanel
-                key={i}
-                number={item.panels.length > 1 ? i + 1 : undefined}
-                scene={panel.scene}
-                caption={panel.caption}
-                imageUrl={panel.imageUrl}
-              />
-            ))}
+            {item.format === "sticker" ? (
+              <StickerComic panels={item.panels} title={item.title} />
+            ) : (
+              item.panels.map((panel, i) => (
+                <ComicPanel
+                  key={i}
+                  number={item.panels.length > 1 ? i + 1 : undefined}
+                  scene={panel.scene}
+                  caption={panel.caption}
+                  imageUrl={panel.imageUrl}
+                />
+              ))
+            )}
+            {item.format === "sticker" && (
+              <button
+                className="py-3 font-bold underline"
+                onClick={() => {
+                  setDownloadError(null);
+                  void downloadSticker(item.panels, item.title, true).catch(() =>
+                    setDownloadError("Couldn't download the sticker. Please try again."),
+                  );
+                }}
+              >
+                Download black-and-white print PNG
+              </button>
+            )}
+            {downloadError && (
+              <p role="alert" className="text-sm text-red-600">
+                {downloadError}
+              </p>
+            )}
+            {item.audio && <StoryAudio audio={item.audio} />}
+            {item.transcript && (
+              <details className="p-2 text-sm">
+                <summary className="cursor-pointer font-bold">Your original story</summary>
+                <p className="mt-2 whitespace-pre-wrap">{item.transcript}</p>
+              </details>
+            )}
             <p className="pb-1 text-center text-xs font-black tracking-[0.2em] text-stone-400 uppercase">
               The end
             </p>
@@ -149,7 +183,7 @@ export default function ComicPage() {
         <div className="px-3 pt-1 pb-3">
           <LinkButton href="/" className="w-full">
             <ReplyIcon className="size-5" />
-            Send one back
+            {item.direction === "sent" ? "Make another comic" : "Send one back"}
           </LinkButton>
         </div>
       )}

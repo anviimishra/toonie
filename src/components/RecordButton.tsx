@@ -12,10 +12,10 @@ type Props = {
 };
 
 const HINT: Record<RecorderState, string> = {
-  idle: "Hold to tell your story",
+  idle: "Tap to tell your story",
   requesting: "Allow the microphone…",
-  recording: "Let go when you're done",
-  recorded: "Got it! Hold again to redo",
+  recording: "Tap again when you’re done",
+  recorded: "Got it! Tap again to redo",
   denied: "Microphone is blocked",
   unsupported: "This browser can't record",
 };
@@ -24,9 +24,8 @@ const HINT: Record<RecorderState, string> = {
  * The big round button that is the point of the home screen.
  *
  * Built in layers for depth: a breathing halo, a recessed well it sits in, and
- * a glossy domed face. Hold to record, release to stop. Pointer events cover
- * mouse, touch and pen in one path; leaving or cancelling also stops, so a
- * finger sliding off never leaves it recording.
+ * a glossy domed face. Tap to start and tap to stop, including keyboard activation. This also
+ * allows the microphone permission prompt to finish before recording starts.
  */
 export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
   const recording = state === "recording";
@@ -60,16 +59,10 @@ export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
 
         <button
           type="button"
-          disabled={blocked}
-          aria-label={recording ? "Stop recording" : "Hold to record your story"}
+          disabled={state === "unsupported" || state === "requesting"}
+          aria-label={recording ? "Stop recording" : "Start recording your story"}
           aria-pressed={recording}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            if (!blocked) onStart();
-          }}
-          onPointerUp={() => recording && onStop()}
-          onPointerLeave={() => recording && onStop()}
-          onPointerCancel={() => recording && onStop()}
+          onClick={() => (recording ? onStop() : onStart())}
           onContextMenu={(event) => event.preventDefault()}
           className={[
             "relative grid size-[62%] touch-none place-items-center overflow-hidden rounded-full bg-linear-to-b text-white select-none",

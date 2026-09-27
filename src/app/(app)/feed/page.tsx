@@ -90,7 +90,7 @@ export default function FeedPage() {
         {state.kind === "ready" && state.items.length === 0 && <EmptyFeed />}
 
         {state.kind === "ready" && state.items.length > 0 && (
-          <ul className="flex flex-col gap-4" aria-label="Comics sent to you">
+          <ul className="flex flex-col gap-4" aria-label="Your sent and received comics">
             {state.items.map((item) => (
               <li key={item.id}>
                 <FeedCard item={item} now={state.now} />

@@ -44,7 +44,9 @@ export function useRecorder(): Recorder {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const requestRef = useRef(0);
+  const openingRef = useRef(false);
+  const urlRef = useRef<string | null>(null);
   const startedAtRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -59,16 +61,16 @@ export function useRecorder(): Recorder {
   // showing the recording indicator if someone navigates away mid-take.
   useEffect(() => {
     return () => {
+      requestRef.current += 1;
       clearTick();
+      if (recorderRef.current) recorderRef.current.onstop = null;
       recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
-      setAudioUrl((url) => {
-        if (url) URL.revokeObjectURL(url);
-        return null;
-      });
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, [clearTick]);
 
   const start = useCallback(async () => {
+    if (openingRef.current || recorderRef.current?.state === "recording") return;
     if (!isSupported()) {
       setState("unsupported");
       return;
@@ -81,33 +83,63 @@ export function useRecorder(): Recorder {
     setAudio(null);
     setElapsed(0);
     setState("requesting");
+    openingRef.current = true;
+    const requestId = ++requestRef.current;
 
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (error) {
-      console.warn("[recorder] microphone unavailable", error);
+    } catch {
+      openingRef.current = false;
+      if (requestId !== requestRef.current) return;
       setState("denied");
       return;
     }
 
-    const recorder = new MediaRecorder(stream);
+    openingRef.current = false;
+    if (requestId !== requestRef.current) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach((track) => track.stop());
+      setState("unsupported");
+      return;
+    }
     recorderRef.current = recorder;
-    chunksRef.current = [];
+    const chunks: Blob[] = [];
 
     recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunksRef.current.push(event.data);
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+
+    recorder.onerror = () => {
+      clearTick();
+      recorder.onstop = null;
+      stream.getTracks().forEach((track) => track.stop());
+      if (requestId === requestRef.current) setState("unsupported");
     };
 
     recorder.onstop = () => {
       stream.getTracks().forEach((track) => track.stop());
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      if (requestId !== requestRef.current) return;
       setAudio(blob);
-      setAudioUrl(URL.createObjectURL(blob));
+      urlRef.current = URL.createObjectURL(blob);
+      setAudioUrl(urlRef.current);
       setState("recorded");
     };
 
-    recorder.start();
+    try {
+      recorder.start();
+    } catch {
+      stream.getTracks().forEach((track) => track.stop());
+      setState("unsupported");
+      return;
+    }
     startedAtRef.current = Date.now();
     setState("recording");
 
@@ -125,6 +157,11 @@ export function useRecorder(): Recorder {
   }, [clearTick]);
 
   const reset = useCallback(() => {
+    requestRef.current += 1;
+    openingRef.current = false;
+    if (recorderRef.current) recorderRef.current.onstop = null;
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
     clearTick();
     setAudioUrl((url) => {
       if (url) URL.revokeObjectURL(url);

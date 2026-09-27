@@ -16,7 +16,11 @@ export type FeedStatus = "new" | "seen";
 
 /** A comic someone sent you. */
 export type FeedItem = {
+  format?: "sticker";
+  transcript?: string;
+  audio?: Blob | null;
   id: string;
+  direction?: "sent" | "received";
   sender: FeedSender;
   title: string;
   /** ISO 8601. */

@@ -1,4 +1,4 @@
-import { CHILD_AVATAR_KEY, createStubAvatars } from "./stub";
+import { CHILD_AVATAR_KEY, createLocalAvatars } from "./local";
 import type { AvatarAdapter } from "./types";
 
 export type { Avatar, AvatarAdapter, AvatarConfig, AvatarSource } from "./types";
@@ -27,11 +27,8 @@ export {
 export { AVATAR_PRESETS, findPreset, matchingPreset, presetForSeed } from "./presets";
 export { MAX_PHOTO_BYTES, checkPhoto } from "./photo";
 
-/**
- * The adapter the app uses. Swap this line when real storage and the image
- * model are ready; no component imports the stub directly.
- */
-export const avatars: AvatarAdapter = createStubAvatars();
+/** Avatars stay on this browser; photo generation uses the server API. */
+export const avatars: AvatarAdapter = createLocalAvatars();
 
 /** The child's avatar: the co-star of the comics. Stored separately. */
-export const childAvatars: AvatarAdapter = createStubAvatars(CHILD_AVATAR_KEY);
+export const childAvatars: AvatarAdapter = createLocalAvatars(CHILD_AVATAR_KEY);
