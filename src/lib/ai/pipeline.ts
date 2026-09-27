@@ -24,7 +24,8 @@ export async function writeScript(
   const ask = () =>
     withRetry(() =>
       xaiPost<ChatResponse>("/chat/completions", {
-        timeoutMs: 60_000,
+        // A six-panel reading script with dialogue regularly takes ~100s.
+        timeoutMs: 150_000,
         body: {
           model: aiEnv().XAI_TEXT_MODEL,
           messages: [
@@ -119,6 +120,7 @@ function friendly(error: unknown): string {
   if (error instanceof XaiError) {
     if (error.status === 401 || error.status === 403) return "The AI key was rejected.";
     if (error.status === 429) return "Too many comics at once. Try again in a minute.";
+    if (error.timedOut) return "The AI took too long to answer. Please try again.";
     if (error.status === 0) return "Couldn't reach the AI service. Check the connection.";
     return error.message;
   }
