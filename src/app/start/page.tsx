@@ -7,7 +7,7 @@ import { Robot } from "@/components/Robot";
 
 /**
  * Second screen, after the splash: who is holding this device? Grown-ups send
- * stories from a phone (/record); kids get the robot face (/face).
+ * stories from a phone, starting at login (/login); kids get the robot face (/face).
  */
 type Role = "grown-up" | "kid";
 
@@ -20,7 +20,7 @@ const CHOICES: {
 }[] = [
   {
     role: "grown-up",
-    href: "/record",
+    href: "/login",
     title: "I'm the grown-up",
     detail: "Parent, grandparent, or caregiver. Tell stories from your phone.",
     icon: <GrownUpIcon />,

@@ -15,12 +15,55 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --font-sans: var(--font-nunito);
+
+  /* Raised surfaces: a soft coloured drop shadow plus a top highlight, so
+     buttons read as physical objects rather than flat stickers. */
+  --shadow-raised:
+    0 10px 24px -8px rgb(234 88 12 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -3px 6px rgb(154 52 18 / 0.25);
+  --shadow-raised-pressed:
+    0 4px 10px -4px rgb(234 88 12 / 0.5), inset 0 2px 4px rgb(154 52 18 / 0.3);
+  --shadow-card: 0 20px 40px -20px rgb(120 53 15 / 0.35), 0 2px 6px rgb(120 53 15 / 0.06);
+  --shadow-chip: 0 3px 0 rgb(231 229 228), 0 6px 12px -6px rgb(120 53 15 / 0.2);
+
+  --animate-breathe: breathe 3.2s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes breathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.07);
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(12px, -16px);
+    }
+  }
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-nunito), system-ui, sans-serif;
+  /* No rubber-band scroll or text selection fighting the hold-to-talk button. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Robot mascot (src/components/Robot.tsx) */
