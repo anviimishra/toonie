@@ -7,6 +7,7 @@ import { childAvatars } from "@/features/avatar";
 export default function ChildAvatarPage() {
   return (
     <AvatarEditor
+      role="child"
       store={childAvatars}
       title="Your child's avatar"
       subtitle="How your kid shows up in the comics."

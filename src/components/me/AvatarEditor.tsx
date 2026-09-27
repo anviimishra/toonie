@@ -16,6 +16,8 @@ import {
   configsEqual,
   sameAvatar,
 } from "@/features/avatar";
+import { loadAvatar } from "@/features/family/avatars";
+import { type FamilyRole, sharedMember, syncAvatar } from "@/features/family/client";
 
 type Mode = "photo" | "build";
 
@@ -27,6 +29,8 @@ const MODES = [
 type Props = {
   /** Whose avatar this is: where it loads from and saves to. */
   store: AvatarAdapter;
+  /** Which person in family_members this avatar belongs to, for the other tablet. */
+  role: FamilyRole;
   title: string;
   subtitle: string;
   /** Read aloud for the saved portrait in the header. */
@@ -40,18 +44,19 @@ type Props = {
  * The header stays put; everything under it scrolls, and the tab bar from the
  * layout stays pinned below.
  */
-export function AvatarEditor({ store, title, subtitle, portraitLabel }: Props) {
+export function AvatarEditor({ store, role, title, subtitle, portraitLabel }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState<Avatar | null>(null);
   const [mode, setMode] = useState<Mode>("photo");
   const [draft, setDraft] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [synced, setSynced] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    store
-      .get()
+    // This tablet's copy, or the one saved to Supabase from another tablet.
+    loadAvatar(store, () => sharedMember(role))
       .catch(() => null)
       .then((found) => {
         if (!active) return;
@@ -65,7 +70,7 @@ export function AvatarEditor({ store, title, subtitle, portraitLabel }: Props) {
     return () => {
       active = false;
     };
-  }, [store]);
+  }, [store, role]);
 
   async function save(avatar: Avatar) {
     setSaving(true);
@@ -73,6 +78,17 @@ export function AvatarEditor({ store, title, subtitle, portraitLabel }: Props) {
     try {
       await store.save(avatar);
       setSaved(avatar);
+      // Then copy it to the connected tablet. Saved here either way.
+      setSynced(null);
+      syncAvatar(role, avatar)
+        .then((count) => setSynced(count ? "Also updated on the connected tablet." : null))
+        .catch((error) => {
+          console.warn("[avatar] couldn't copy to the connected tablet", error);
+          const reason = error instanceof Error ? error.message : "";
+          setProblem(
+            `Saved here, but the connected tablet didn't get it${reason ? `: ${reason}` : "."}`,
+          );
+        });
     } catch {
       setProblem("That didn't save. Try again in a moment.");
     } finally {
@@ -117,6 +133,12 @@ export function AvatarEditor({ store, title, subtitle, portraitLabel }: Props) {
             }}
           />
         </div>
+
+        {synced && (
+          <p role="status" className="mt-3 px-6 text-center text-sm font-bold text-orange-600">
+            {synced}
+          </p>
+        )}
 
         {problem && (
           <p role="alert" className="mt-3 px-6 text-center text-sm font-bold text-red-600">

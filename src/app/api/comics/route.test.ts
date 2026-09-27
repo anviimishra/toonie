@@ -68,11 +68,21 @@ it("rejects unauthenticated generation before calling the provider", async () =>
   expect(makeComic).not.toHaveBeenCalled();
 });
 
+/** A db whose family_members lookup returns `member`. */
+function familyDb(member: { avatar_reference: string | null; language?: string } | null) {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    maybeSingle: async () => ({ data: member, error: null }),
+  };
+  return { from: () => query };
+}
+
 it("uses the paired child's saved avatar instead of a supplied reference", async () => {
   vi.mocked(requireUser).mockResolvedValueOnce({
     user: { id: "child", is_anonymous: true },
-    db: {},
-  } as Awaited<ReturnType<typeof requireUser>>);
+    db: familyDb(null),
+  } as unknown as Awaited<ReturnType<typeof requireUser>>);
   vi.mocked(requirePair).mockResolvedValueOnce({
     child_id: "child",
     child_avatar_reference: "data:image/png;base64,Yg==",
@@ -88,6 +98,69 @@ it("uses the paired child's saved avatar instead of a supplied reference", async
     expect.objectContaining({
       reference: "data:image/png;base64,Yg==",
     }),
+    expect.any(Function),
+  );
+});
+
+it("prefers the child avatar from family_members over the pair's copy", async () => {
+  vi.mocked(requireUser).mockResolvedValueOnce({
+    user: { id: "child", is_anonymous: true },
+    db: familyDb({ avatar_reference: "data:image/png;base64,Zg==" }),
+  } as unknown as Awaited<ReturnType<typeof requireUser>>);
+  vi.mocked(requirePair).mockResolvedValueOnce({
+    child_id: "child",
+    child_avatar_reference: "data:image/png;base64,Yg==",
+  } as Awaited<ReturnType<typeof requirePair>>);
+  const response = await POST(request({ pairId: "11111111-1111-4111-8111-111111111111" }));
+  expect(response.status).toBe(200);
+  expect(makeComic).toHaveBeenCalledWith(
+    expect.objectContaining({ reference: "data:image/png;base64,Zg==" }),
+    expect.any(Function),
+  );
+});
+
+it("passes the parent's language through to transcription", async () => {
+  const form = new FormData();
+  form.set("panelCount", "1");
+  form.set("reference", "data:image/png;base64,YQ==");
+  form.set("language", "hi");
+  form.set("audio", new Blob(["x"], { type: "audio/webm" }));
+  const response = await POST(
+    new Request("http://localhost/api/comics", { method: "POST", body: form }),
+  );
+  expect(response.status).toBe(200);
+  expect(makeComic).toHaveBeenCalledWith(
+    expect.objectContaining({ kind: "audio", language: "hi" }),
+    expect.any(Function),
+  );
+});
+
+it("rejects a language the app doesn't offer", async () => {
+  const response = await POST(request({ reference: "data:image/png;base64,YQ==", language: "xx" }));
+  expect(response.status).toBe(400);
+  expect(makeComic).not.toHaveBeenCalled();
+});
+
+it("uses the child's language from family_members, not the device's", async () => {
+  vi.mocked(requireUser).mockResolvedValueOnce({
+    user: { id: "child", is_anonymous: true },
+    db: familyDb({ avatar_reference: "data:image/png;base64,Zg==", language: "ja" }),
+  } as unknown as Awaited<ReturnType<typeof requireUser>>);
+  vi.mocked(requirePair).mockResolvedValueOnce({
+    child_id: "child",
+    child_avatar_reference: null,
+  } as unknown as Awaited<ReturnType<typeof requirePair>>);
+  const form = new FormData();
+  form.set("panelCount", "1");
+  form.set("pairId", "11111111-1111-4111-8111-111111111111");
+  form.set("language", "fr");
+  form.set("audio", new Blob(["x"], { type: "audio/webm" }));
+  const response = await POST(
+    new Request("http://localhost/api/comics", { method: "POST", body: form }),
+  );
+  expect(response.status).toBe(200);
+  expect(makeComic).toHaveBeenCalledWith(
+    expect.objectContaining({ language: "ja" }),
     expect.any(Function),
   );
 });

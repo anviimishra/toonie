@@ -7,6 +7,7 @@ import { avatars } from "@/features/avatar";
 export default function MyAvatarPage() {
   return (
     <AvatarEditor
+      role="parent"
       store={avatars}
       title="Your avatar"
       subtitle="The star of every comic you make."

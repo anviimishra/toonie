@@ -11,7 +11,13 @@
  */
 
 import type { MessagingTables } from "./messages.types";
-export type { ParentChildPair, ComicMessage, ComicMessageInsert } from "./messages.types";
+export type {
+  ParentChildPair,
+  ComicMessage,
+  ComicMessageInsert,
+  FamilyMember,
+  MessageVoiceover,
+} from "./messages.types";
 export { BUCKET_MESSAGE_MEDIA } from "./messages.types";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

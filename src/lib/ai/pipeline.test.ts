@@ -57,6 +57,17 @@ describe("comic pipeline", () => {
     );
     expect(events.map((event) => event.type)).toEqual(["transcribed", "scripted", "panel", "done"]);
   });
+  it("transcribes a recording in the storyteller's language", async () => {
+    vi.mocked(xaiPost)
+      .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify(script) } }] })
+      .mockResolvedValueOnce({ data: [{ b64_json: "YQ==" }] });
+    const audio = new Blob(["x"], { type: "audio/webm" });
+    await makeComic(
+      { kind: "audio", audio, filename: "story.webm", panelCount: 1, reference, language: "es" },
+      () => {},
+    );
+    expect(transcribe).toHaveBeenCalledWith(audio, { language: "es" });
+  });
   it("does not report success if a panel fails", async () => {
     vi.mocked(xaiPost)
       .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify(script) } }] })
@@ -99,7 +110,7 @@ describe("comic pipeline", () => {
     );
     expect(events[0]).toEqual({ type: "transcribed", transcript: "I found a rock." });
     expect(events.at(-1)).toMatchObject({ type: "done", comic: { transcript: "I found a rock." } });
-    expect(transcribe).toHaveBeenCalledWith(expect.any(Blob));
+    expect(transcribe).toHaveBeenCalledWith(expect.any(Blob), { language: undefined });
   });
   it("rejects invalid scripts and wrong panel counts", () => {
     expect(parseScript("bad JSON", 1)).toBeNull();
