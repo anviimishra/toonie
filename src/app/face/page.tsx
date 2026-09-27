@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RobotFace, type Mood } from "@/components/RobotFace";
-import { useMailbox } from "@/features/receiver";
+import { useRobotState } from "@/features/receiver";
 import { PANEL_COUNT_DEFAULT, checkDraft, stories, type StoryDraft } from "@/features/stories";
 import { useRecorder } from "@/hooks/useRecorder";
 
@@ -25,7 +25,7 @@ type Activity = "idle" | "listening" | "illustrating" | "sent";
  */
 export default function Face() {
   const recorder = useRecorder();
-  const { mailReceived, setMailReceived, clearMail } = useMailbox();
+  const { mailReceived, toggleMail, clearMail, reportMood } = useRobotState();
   const [activity, setActivity] = useState<Activity>("idle");
   const [problem, setProblem] = useState<string | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -44,6 +44,9 @@ export default function Face() {
   useEffect(() => log("mood →", mood), [mood]);
   useEffect(() => log("recorder →", recorder.state), [recorder.state]);
   useEffect(() => log("mailReceived →", mailReceived), [mailReceived]);
+
+  // Keep Supabase's robot_states row in step with what the face shows.
+  useEffect(() => reportMood(mood), [mood, reportMood]);
 
   function goToSleep(message: string | null = null) {
     log("going to sleep", message ? `(${message})` : "");
@@ -135,11 +138,11 @@ export default function Face() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "m") setMailReceived((v) => !v);
+      if (e.key === "m") toggleMail();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setMailReceived]);
+  }, [toggleMail]);
 
   const asleep = mood === "sleeping";
 
