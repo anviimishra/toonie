@@ -10,6 +10,10 @@
  * app types against.
  */
 
+import type { MessagingTables } from "./messages.types";
+export type { ParentChildPair, ComicMessage, ComicMessageInsert } from "./messages.types";
+export { BUCKET_MESSAGE_MEDIA } from "./messages.types";
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 // Declared as runtime arrays, not bare unions, so the values are available for
@@ -26,7 +30,7 @@ export type RobotMood = (typeof ROBOT_MOODS)[number];
 
 export type Database = {
   public: {
-    Tables: {
+    Tables: MessagingTables & {
       capsules: {
         Row: {
           id: string;
