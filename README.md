@@ -5,7 +5,7 @@ Record or type a story, preview a Grok-generated comic starring your saved avata
 ## Demo setup
 
 1. Install dependencies, copy `.env.example` to `.env.local`, and fill in the Supabase and xAI keys. Keep secret keys server-only.
-2. Apply migrations in filename order. Existing installations with the two message migrations applied need only `supabase/migrations/20260927063038_pairing_and_delivery.sql`.
+2. Apply migrations in filename order. Existing installations with the two message migrations applied need `supabase/migrations/20260927063038_pairing_and_delivery.sql`, followed by `20260927071932_restore_auth_profiles.sql` to restore the table expected by the signup trigger.
 3. Enable Email/password and Anonymous Sign-Ins in Supabase Authentication. If email confirmation is enabled, confirm the signup email before signing in. Configure Supabase's Site URL and allowed redirect URLs for your deployed origin and `http://localhost:3000/login`.
 4. Run `npm run dev` and open http://localhost:3000/start.
 5. Choose Parent, create an account/sign in, and save your own avatar and the child's avatar in Me. In Settings, enter the child's name and generate a five-digit code.

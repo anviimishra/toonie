@@ -2,7 +2,7 @@
 
 ## Setup and migration order
 
-For an existing installation, do not rerun migrations already applied. The new migration is `20260927063038_pairing_and_delivery.sql`; apply it after the parent-child message and backend-transcription migrations. A fresh installation applies all files in `supabase/migrations` in filename order.
+For an existing installation, do not rerun migrations already applied. Apply `20260927063038_pairing_and_delivery.sql` after the parent-child message and backend-transcription migrations, then `20260927071932_restore_auth_profiles.sql`. The latter restores the missing profile table required by the hosted signup trigger and includes that trigger in migration history. A fresh installation applies all files in `supabase/migrations` in filename order.
 
 Enable Supabase Email/password and Anonymous Sign-Ins. Configure allowed email confirmation redirects for `/login` on each app origin. The server needs `SUPABASE_SECRET_KEY`; the browser uses only the public URL and publishable key.
 
@@ -44,6 +44,6 @@ The child records using tap-to-start/stop, generates with the paired child avata
 
 ## Verification
 
-`scripts/test-message-schema.ps1` runs all migrations and 53 pgTAP assertions in an isolated Docker database. It covers participant-only access, recipient-only receipts, private storage, immutable content, code claims/expiry/retries, and rate limits.
+`scripts/test-message-schema.ps1` runs all migrations and 59 pgTAP assertions in an isolated Docker database. It covers participant-only access, recipient-only receipts, private storage, immutable content, code claims/expiry/retries, and rate limits.
 
 `scripts/smoke-delivery.mjs` exercises the running application against hosted Supabase with temporary accounts and media. It verifies real Auth, code pairing, both delivery directions, exact image/audio retrieval, missing-upload rejection, retry deduplication, and receipts. It does not spend xAI image-generation credits.
