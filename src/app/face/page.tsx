@@ -4,6 +4,7 @@ import Link from "next/link";
 import { RobotFace, type Mood } from "@/components/RobotFace";
 import { ChildConnection } from "@/components/ChildConnection";
 import { Button } from "@/components/Button";
+import { LogoutIcon } from "@/components/icons";
 import { ComicPanel } from "@/components/feed/ComicPanel";
 import { ReadAloud } from "@/components/ReadAloud";
 import { useRecorder } from "@/hooks/useRecorder";
@@ -17,10 +18,21 @@ import type { FeedItem } from "@/features/feed/types";
 import type { Comic } from "@/types";
 
 export default function Face() {
-  return <ChildConnection>{(pair) => <ConnectedFace pair={pair} />}</ChildConnection>;
+  return (
+    <ChildConnection>
+      {(pair, signOut) => <ConnectedFace pair={pair} signOut={signOut} />}
+    </ChildConnection>
+  );
 }
-function ConnectedFace({ pair }: { pair: ParentChildPair }) {
+function ConnectedFace({
+  pair,
+  signOut,
+}: {
+  pair: ParentChildPair;
+  signOut: () => Promise<void>;
+}) {
   const recorder = useRecorder();
+  const resetRecorder = recorder.reset;
   const generation = useComicJob(true);
   const { start: startJob, dismiss: dismissJob, job: pendingJob } = generation;
   const restoredJob = useRef<string | null>(null);
@@ -128,25 +140,32 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
       return;
     }
     if (!job.comic || restoredJob.current === job.id) return;
+    // Claim the job before any await so a re-render can't send it twice.
+    restoredJob.current = job.id;
     setActivity("illustrating");
-    setStage("Preparing your reading preview…");
-    let valid = true;
-    void jobSource(job)
-      .then(async (source) => {
-        const prepared = await prepareStory(job.id, job.comic!, source, renderSticker);
-        if (valid) {
-          restoredJob.current = job.id;
-          setActivity("idle");
-          setPreview({ comic: job.comic!, prepared });
-        }
-      })
-      .catch((e) => {
-        if (valid) setProblem(e.message);
-      });
-    return () => {
-      valid = false;
-    };
-  }, [generation.job]);
+    setStage("Sending your comic to your grown-up…");
+    const comic = job.comic;
+    // Replies go straight to the parent feed once drawn; the preview screen
+    // only appears if sending fails, so the child can retry.
+    void (async () => {
+      let prepared: PreparedStory | null = null;
+      try {
+        prepared = await prepareStory(job.id, comic, await jobSource(job), renderSticker);
+        await deliverStory(prepared, pair.id, true);
+        await dismissJob();
+        resetRecorder();
+        if (!mounted.current) return;
+        setActivity("sent");
+        void refresh();
+      } catch (e) {
+        if (!mounted.current) return;
+        setActivity("idle");
+        if (prepared) setPreview({ comic, prepared });
+        else restoredJob.current = null;
+        setProblem(e instanceof Error ? e.message : "Couldn't send. Try again.");
+      }
+    })();
+  }, [generation.job, pair.id, dismissJob, resetRecorder, refresh]);
   async function sendReply() {
     if (!preview || sendLock.current) return;
     sendLock.current = true;
@@ -265,12 +284,22 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
           <button
             key={m.id}
             onClick={() => setOpened(m)}
-            className="block w-full rounded-xl border border-stone-200 p-4 text-left"
+            className="flex w-full items-center gap-4 rounded-xl border border-stone-200 p-3 text-left"
           >
-            <span className="font-bold">{m.title}</span>
-            <span className="block text-sm">
-              {m.direction === "sent" ? "You sent this" : "From your grown-up"}
-              {m.status === "new" ? " · New" : ""}
+            {(m.thumbnailUrl ?? m.imageUrl) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={m.thumbnailUrl ?? m.imageUrl}
+                alt=""
+                className="size-20 shrink-0 rounded-lg border border-stone-200 object-cover"
+              />
+            )}
+            <span className="min-w-0">
+              <span className="block font-bold">{m.title}</span>
+              <span className="block text-sm">
+                {m.direction === "sent" ? "You sent this" : "From your grown-up"}
+                {m.status === "new" ? " · New" : ""}
+              </span>
             </span>
           </button>
         ))}
@@ -305,6 +334,17 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
         </span>
         {pair.child_name}
       </p>
+      {/* Deliberately faint: for grown-ups switching a tablet to another code. */}
+      <button
+        onClick={() => {
+          if (window.confirm(`Sign ${pair.child_name} out of this device?`))
+            void signOut().catch((e) => setProblem(e.message));
+        }}
+        aria-label="Sign out of this device"
+        className="absolute top-[max(env(safe-area-inset-top),1rem)] right-3 grid size-10 place-items-center rounded-full text-stone-400 opacity-40 hover:opacity-100"
+      >
+        <LogoutIcon className="size-5" />
+      </button>
       <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto max-w-md px-4 text-center">
         <p role="status" className="mb-3 font-bold">
           {activity === "illustrating"

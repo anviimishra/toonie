@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { READING_PANEL_COUNT } from "@/types";
 import { prepareStory, submissionFormData, textSource } from "./submission";
 const id = "00000000-0000-4000-8000-000000000001";
 const comic = {
@@ -59,7 +60,7 @@ it("prepares separate summary files and full reading artwork", async () => {
   const full = {
     ...comic,
     readingVersion: 2 as const,
-    panels: Array(6).fill(comic.panels[0]),
+    panels: Array(READING_PANEL_COUNT).fill(comic.panels[0]),
     stickerPanels: Array(3).fill(comic.panels[0]),
   };
   const result = await prepareStory(id, full, textSource(), renderer);
@@ -67,13 +68,13 @@ it("prepares separate summary files and full reading artwork", async () => {
   expect(renderer).toHaveBeenCalledWith(full.stickerPanels, false);
   expect(await result.colorImage.text()).toBe("reading");
   expect(await result.thumbnailImage?.text()).toBe("png");
-  expect(result.panelCount).toBe(6);
+  expect(result.panelCount).toBe(READING_PANEL_COUNT);
 });
 it("child reading comics have no print file or extra sticker rendering", async () => {
   const renderer = vi.fn(render);
   const result = await prepareStory(
     id,
-    { ...comic, readingVersion: 2, panels: Array(6).fill(comic.panels[0]) },
+    { ...comic, readingVersion: 2, panels: Array(READING_PANEL_COUNT).fill(comic.panels[0]) },
     textSource(),
     renderer,
   );

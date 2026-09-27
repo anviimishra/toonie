@@ -24,7 +24,7 @@ import { createComicJob, runComicJob } from "@/lib/comic-jobs";
  * screen can show the words, then the captions, then each picture arriving.
  */
 export const runtime = "nodejs";
-// Six images are drawn in parallel; this leaves room for a slow one.
+// Up to nine images are drawn in parallel; this leaves room for a slow one.
 export const maxDuration = 300;
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const fieldsSchema = z.object({
@@ -130,7 +130,8 @@ export async function POST(request: Request): Promise<Response> {
   } else {
     return problem(400, "Send either a recording or some text.");
   }
-  comicRequest.outputMode = identity.user.is_anonymous ? "reading" : "dual";
+  // Sticker only for now: the separate reading comic took too long to script for a demo.
+  comicRequest.outputMode = undefined;
   if (new URL(request.url).searchParams.get("background") === "1") {
     try {
       const rawDuration = Number(form.get("durationMs"));

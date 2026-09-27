@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { makeComic, type ComicRequest } from "@/lib/ai/pipeline";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/server-auth";
-import type { Comic } from "@/types";
+import { READING_PANEL_COUNT, type Comic } from "@/types";
 import type { Json } from "@/lib/supabase/types";
 const bucket = "comic-drafts";
 export async function createComicJob(userId: string, input: ComicRequest, duration: number | null) {
@@ -15,9 +15,9 @@ export async function createComicJob(userId: string, input: ComicRequest, durati
     stage: "Preparing your story…",
     panel_count:
       input.outputMode === "dual"
-        ? 6 + Math.max(3, input.panelCount)
+        ? READING_PANEL_COUNT + Math.max(3, input.panelCount)
         : input.outputMode === "reading"
-          ? 6
+          ? READING_PANEL_COUNT
           : input.panelCount,
     audio_duration_ms: duration,
   });

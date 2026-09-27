@@ -1,7 +1,10 @@
 import { transcribe } from "./transcribe";
 import { stickerAspectRatio } from "@/features/stories/sticker";
 import { aiEnv } from "@/lib/env";
-import { titledScriptSchema, type Comic, type ComicEvent, type TitledScript } from "@/types";
+import {
+  READING_PANEL_COUNT,
+  titledScriptSchema,
+  type Comic, type ComicEvent, type TitledScript } from "@/types";
 import {
   SCRIPT_JSON_SCHEMA,
   panelImagePrompt,
@@ -119,6 +122,7 @@ function friendly(error: unknown): string {
   if (error instanceof XaiError) {
     if (error.status === 401 || error.status === 403) return "The AI key was rejected.";
     if (error.status === 429) return "Too many comics at once. Try again in a minute.";
+    if (error.timedOut) return "The AI took too long to answer. Please try again.";
     if (error.status === 0) return "Couldn't reach the AI service. Check the connection.";
     return error.message;
   }
@@ -147,7 +151,7 @@ export async function makeComic(
     const [script, sticker] = await Promise.all([
       writeScript(
         transcript,
-        full ? 6 : request.panelCount,
+        full ? READING_PANEL_COUNT : request.panelCount,
         request.narrator,
         full ? "reading" : undefined,
       ),

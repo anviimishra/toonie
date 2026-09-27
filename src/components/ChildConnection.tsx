@@ -9,7 +9,7 @@ import type { ParentChildPair } from "@/lib/supabase/types";
 export function ChildConnection({
   children,
 }: {
-  children: (pair: ParentChildPair) => React.ReactNode;
+  children: (pair: ParentChildPair, signOut: () => Promise<void>) => React.ReactNode;
 }) {
   const [pair, setPair] = useState<ParentChildPair | null>(null),
     [loading, setLoading] = useState(true),
@@ -66,7 +66,14 @@ export function ChildConnection({
         Opening your Toonie…
       </p>
     );
-  if (pair) return children(pair);
+  // Leaves this device's anonymous session; the grown-up's code connects it again.
+  async function signOut() {
+    await supabaseChild().auth.signOut({ scope: "local" });
+    setCode("");
+    setProblem("");
+    setPair(null);
+  }
+  if (pair) return children(pair, signOut);
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 px-6 py-10">
       <h1 className="text-3xl font-black">Connect to your grown-up</h1>

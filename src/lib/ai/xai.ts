@@ -14,13 +14,18 @@ export class XaiError extends Error {
     message: string,
     readonly status: number,
     readonly endpoint: string,
+    readonly timedOut = false,
   ) {
     super(message);
     this.name = "XaiError";
   }
 
-  /** Worth trying again: rate limits and the provider's own hiccups. */
+  /**
+   * Worth trying again: rate limits and the provider's own hiccups. Not
+   * timeouts: a retry would just wait the whole timeout again.
+   */
   get retryable(): boolean {
+    if (this.timedOut) return false;
     return this.status === 429 || this.status >= 500 || this.status === 0;
   }
 }
@@ -66,6 +71,7 @@ export async function xaiPost<T>(
       timedOut ? `Timed out after ${timeoutMs / 1000}s` : "Could not reach xAI",
       0,
       endpoint,
+      timedOut,
     );
   }
 
