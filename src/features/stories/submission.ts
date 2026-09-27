@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Comic } from "@/types";
+import { READING_PANEL_COUNT, type Comic } from "@/types";
 import { renderReadingComic } from "./export-reading";
 
 export type StorySource = {
@@ -103,7 +103,7 @@ export async function prepareStory(
   const sticker = comic.readingVersion === 2 ? comic.stickerPanels : comic.panels;
   if (
     comic.readingVersion === 2 &&
-    (comic.panels.length !== 6 || (sticker && ![3, 4].includes(sticker.length)))
+    (comic.panels.length !== READING_PANEL_COUNT || (sticker && ![3, 4].includes(sticker.length)))
   )
     throw new Error("The reading comic or sticker is incomplete.");
   const [colorImage, printImage] = await Promise.all([

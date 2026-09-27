@@ -1,7 +1,10 @@
 import { transcribe } from "./transcribe";
 import { stickerAspectRatio } from "@/features/stories/sticker";
 import { aiEnv } from "@/lib/env";
-import { titledScriptSchema, type Comic, type ComicEvent, type TitledScript } from "@/types";
+import {
+  READING_PANEL_COUNT,
+  titledScriptSchema,
+  type Comic, type ComicEvent, type TitledScript } from "@/types";
 import {
   SCRIPT_JSON_SCHEMA,
   panelImagePrompt,
@@ -24,8 +27,7 @@ export async function writeScript(
   const ask = () =>
     withRetry(() =>
       xaiPost<ChatResponse>("/chat/completions", {
-        // A six-panel reading script with dialogue regularly takes ~100s.
-        timeoutMs: 150_000,
+        timeoutMs: 60_000,
         body: {
           model: aiEnv().XAI_TEXT_MODEL,
           messages: [
@@ -149,7 +151,7 @@ export async function makeComic(
     const [script, sticker] = await Promise.all([
       writeScript(
         transcript,
-        full ? 6 : request.panelCount,
+        full ? READING_PANEL_COUNT : request.panelCount,
         request.narrator,
         full ? "reading" : undefined,
       ),

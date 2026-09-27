@@ -6,6 +6,9 @@ import { PANEL_COUNT_MAX, PANEL_COUNT_MIN, panelSchema } from "./story";
  * it works. Shared by POST /api/comics and the record screen.
  */
 
+/** Panels in the captioned reading comic. Kept low so a demo comic finishes quickly. */
+export const READING_PANEL_COUNT = 5;
+
 /** The script with a title, as the text model writes it. */
 export const titledScriptSchema = z.object({
   title: z.string().min(1).max(80),
