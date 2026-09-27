@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Comic } from "@/types";
+import { renderReadingComic } from "./export-reading";
 
 export type StorySource = {
   kind: "voice" | "text" | "unknown";
@@ -27,6 +28,7 @@ export type PreparedStory = {
   panelCount: number;
   colorImage: Blob;
   printImage: Blob;
+  thumbnailImage?: Blob;
 };
 
 const manifestSchema = z.object({
@@ -111,7 +113,8 @@ export async function prepareStory(
     transcript: comic.transcript,
     source,
     panelCount: comic.panels.length,
-    colorImage,
+    colorImage: comic.readingVersion ? await renderReadingComic(comic.panels) : colorImage,
+    thumbnailImage: comic.readingVersion ? colorImage : undefined,
     printImage,
   };
   submissionFormData(story); // Validate readiness before saving or marking locally sent.

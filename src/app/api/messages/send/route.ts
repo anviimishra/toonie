@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       original_transcript: input.originalTranscript,
       comic_path: `${base}/comic.png`,
       print_path: `${base}/print.png`,
+      thumbnail_path: input.thumbnail ? `${base}/thumbnail.png` : null,
       audio_path: input.audio ? `${base}/voice` : null,
       audio_mime_type: input.audio?.type ?? null,
       audio_duration_ms: input.audioDurationMs,

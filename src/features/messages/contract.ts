@@ -19,6 +19,7 @@ export const deliverySchema = z
     panelCount: z.number().int().min(1).max(4),
     comic: mediaSchema.refine((m) => m.type === "image/png"),
     print: mediaSchema.refine((m) => m.type === "image/png"),
+    thumbnail: mediaSchema.refine((m) => m.type === "image/png").optional(),
     audio: mediaSchema.refine((m) => m.type.startsWith("audio/")).nullable(),
   })
   .refine(
@@ -31,6 +32,9 @@ export function deliveryFiles(input: DeliveryInput) {
   return [
     { key: "comic" as const, path: `${base}/comic.png`, media: input.comic },
     { key: "print" as const, path: `${base}/print.png`, media: input.print },
+    ...(input.thumbnail
+      ? [{ key: "thumbnail" as const, path: `${base}/thumbnail.png`, media: input.thumbnail }]
+      : []),
     ...(input.audio ? [{ key: "audio" as const, path: `${base}/voice`, media: input.audio }] : []),
   ];
 }

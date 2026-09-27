@@ -16,6 +16,7 @@ export type FeedStatus = "new" | "seen";
 
 /** A comic someone sent you. */
 export type FeedItem = {
+  thumbnailUrl?: string;
   format?: "sticker";
   transcript?: string;
   audio?: Blob | null;

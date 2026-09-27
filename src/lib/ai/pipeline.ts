@@ -63,7 +63,9 @@ export function parseScript(raw: string, panelCount: number): TitledScript | nul
   if (!result.success) return null;
   const script = result.data;
   if (script.panels.length !== panelCount) return null;
-  return { ...script, panels: script.panels.map((panel) => ({ ...panel, caption: "" })) };
+  if (script.panels.some((panel) => !panel.caption.trim() || panel.caption.length > 180))
+    return null;
+  return script;
 }
 type ImageResponse = { data?: { b64_json?: string }[] };
 export async function drawPanel(
@@ -158,7 +160,13 @@ export async function makeComic(
       });
       return;
     }
-    const comic: Comic = { title: script.title, transcript, panels: results, format: "sticker" };
+    const comic: Comic = {
+      title: script.title,
+      transcript,
+      panels: results,
+      format: "sticker",
+      readingVersion: 1,
+    };
     emit({ type: "done", comic });
   } catch (error) {
     console.error("[comics] pipeline failed:", error);

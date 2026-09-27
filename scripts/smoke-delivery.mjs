@@ -78,6 +78,7 @@ try {
       panelCount: 3,
       comic: media(png, "image/png"),
       print: media(png, "image/png"),
+      thumbnail: media(png, "image/png"),
       audio: voice ? media(audio, "audio/wav") : null,
     };
     const prepared = await api("/api/messages/prepare", sender, input);
@@ -98,6 +99,7 @@ try {
     const item = (await api(`/api/messages?id=${input.id}`, receiver)).items[0];
     assert.equal(item.direction, "received");
     assert.equal(item.transcript, input.transcript);
+    assert.deepEqual(Buffer.from(await (await fetch(item.thumbnailUrl)).arrayBuffer()), png);
     assert.deepEqual(Buffer.from(await (await fetch(item.imageUrl)).arrayBuffer()), png);
     if (voice)
       assert.deepEqual(Buffer.from(await (await fetch(item.audioUrl)).arrayBuffer()), audio);

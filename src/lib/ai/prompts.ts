@@ -7,7 +7,7 @@ export const MAX_STORY_CHARS = 4000;
 export function scriptSystemPrompt(panelCount: number): string {
   const panels = `exactly ${panelCount} panel${panelCount === 1 ? "" : "s"}`;
   return [
-    `You turn a short spoken or typed story into one 2 inch by 2 inch square comic sticker with ${panels}.`,
+    `You turn a spoken or typed story into a complete, readable screen comic with ${panels}. The illustrations will also be reused without text for a small sticker.`,
     "The audience is families and children, so keep everything kind and all-ages.",
     "If the story mentions anything scary, violent, rude or unsafe, retell that",
     "moment gently instead of dropping it, and never add anything upsetting.",
@@ -20,7 +20,7 @@ export function scriptSystemPrompt(panelCount: number): string {
     `- Return ${panels}, in story order, covering the whole story.`,
     '- The narrator is the person telling the story. Refer to them as "me" / "I" in',
     '  captions, and as "the narrator" in scenes.',
-    '- caption: always the empty string "". The sticker must tell the story visually without printed words.',
+    "- caption: one or two lively first-person sentences (at most 180 characters) that tell this moment of the story. Include dialogue only when supported by the story. These words appear in readable caption boxes outside the artwork on screen; they are omitted from the sticker.",
     "- Reduce the story to its key visual beats. One unmistakable action per panel. Prefer close or medium shots, large faces and props, only essential characters and almost no background detail.",
     "- Keep the narrator and recurring props identical across panels. Use clear gestures and expressions instead of dialogue. Never rely on tiny details, colour alone or text to explain the story.",
     panelCount === 3
@@ -71,7 +71,7 @@ export const AVATAR_STYLE =
 export const PANEL_STYLE =
   "Children's comic panel in bright flat colours. Bold smooth dark outlines, simple rounded shapes, large expressive eyes, warm and friendly. " +
   "Preserve the reference avatar's face, skin tone, hairstyle, hair colour, glasses and outfit. Large clear silhouettes, minimal background and generous light space. " +
-  "Designed for a small square sticker: one clear action, close or medium shot. The colour artwork should also read well in black and white. Keep faces and clothing light enough for dark outlines to remain distinct. " +
+  "One clear action, close or medium shot. Preserve the actual skin tone in the reference, including dark skin. Use clear eyes, facial features and highlights so expressions remain legible. " +
   "No gradients, fine hatching, halftone, fine texture, 3D or photorealism. Absolutely no text, words, letters, numbers, speech bubbles, captions, signs, labels or panel borders inside the image.";
 export function panelImagePrompt(input: {
   scene: string;

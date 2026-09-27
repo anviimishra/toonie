@@ -15,12 +15,11 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadInput, saveInput, clearDraft, loadDraft, saveDraft } from "@/features/stories/storage";
-import { apiFetch } from "@/lib/api-client";
+import { useComicJob, jobSource } from "@/features/stories/useComicJob";
 import { deliverStory, getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 import { avatars } from "@/features/avatar";
 import { avatarReference, describeAvatar } from "@/features/avatar/reference";
-import { readComicStream } from "@/features/stories/generate";
 import { StickerComic } from "@/components/feed/StickerComic";
 import { StoryAudio } from "@/components/StoryAudio";
 import {
@@ -50,6 +49,8 @@ export default function RecordPage() {
   const { user } = useCurrentUser();
   const recorder = useRecorder();
   const router = useRouter();
+  const generation = useComicJob();
+  const restoredJob = useRef<string | null>(null);
   const [source, setSource] = useState<StorySource>(textSource);
   const [comicSource, setComicSource] = useState<StorySource>(legacySource);
   const [pairs, setPairs] = useState<ParentChildPair[]>([]);
@@ -80,11 +81,43 @@ export default function RecordPage() {
   const [printPreview, setPrintPreview] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [comic, setComic] = useState<Comic | null>(null);
-  const [stage, setStage] = useState("Preparing your avatar…");
-  const [drawn, setDrawn] = useState(0);
   const [needsAvatar, setNeedsAvatar] = useState(false);
-  const active = useRef<AbortController | null>(null);
-  useEffect(() => () => active.current?.abort(), []);
+  const active = useRef(false);
+  useEffect(() => {
+    const job = generation.job;
+    if (job?.status === "failed" && restoredJob.current !== job.id) {
+      restoredJob.current = job.id;
+      setProblem(job.error ?? "Please try again.");
+    }
+    if (!job?.comic || job.status !== "ready" || restoredJob.current === job.id) return;
+    let mounted = true;
+    void jobSource(job)
+      .then(async (savedSource) => {
+        const existing = await loadDraft().catch(() => undefined);
+        if (!mounted) return;
+        restoredJob.current = job.id;
+        setComic(job.comic!);
+        setComicId(job.id);
+        setComicSource(savedSource);
+        setSource(savedSource);
+        setText(job.comic!.transcript);
+        setMode(savedSource.audio ? "talk" : "type");
+        setPanelCount(job.panel_count);
+        preparedStory.current = existing?.id === job.id ? existing.submission : undefined;
+        await saveDraft({
+          id: job.id,
+          comic: job.comic!,
+          source: savedSource,
+          submission: preparedStory.current,
+        });
+      })
+      .catch((e) => {
+        if (mounted) setProblem(e.message);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [generation.job]);
   useEffect(() => {
     let mounted = true;
     Promise.all([loadDraft(), loadInput()])
@@ -140,15 +173,12 @@ export default function RecordPage() {
       setProblem(check.reason);
       return;
     }
-    if (active.current) return;
+    if (active.current || generation.job?.status === "working") return;
     setProblem(null);
     setNeedsAvatar(false);
-    setDrawn(0);
-    setStage("Preparing your avatar…");
     setSending(true);
-    const controller = new AbortController();
-    active.current = controller;
-    let sentSource: StorySource =
+    active.current = true;
+    const sentSource: StorySource =
       mode === "talk"
         ? { kind: "voice", audio: storyAudio, durationMs: recordedMs, originalTranscript: null }
         : textSource();
@@ -174,43 +204,15 @@ export default function RecordPage() {
       if (mode === "talk" && storyAudio)
         form.set("audio", storyAudio, `story.${audioExtension(storyAudio.type)}`);
       else form.set("text", text);
-      setStage(mode === "talk" ? "Listening to your story…" : "Writing your comic…");
-      const response = await apiFetch("/api/comics", {
-        method: "POST",
-        body: form,
-        signal: controller.signal,
-      });
-      const result = await readComicStream(response, (event) => {
-        if (event.type === "transcribed") {
-          if (sentSource.kind === "voice")
-            sentSource = { ...sentSource, originalTranscript: event.transcript };
-          setStage("Writing your comic…");
-        }
-        if (event.type === "scripted") setStage("Drawing your panels…");
-        if (event.type === "panel") setDrawn((count) => count + 1);
-      });
-      setSource(sentSource);
-      setComicSource(sentSource);
-      setComic(result);
-      setText(result.transcript);
-      setMode(sentSource.kind === "voice" ? "talk" : "type");
-      const id = crypto.randomUUID();
-      setComicId(id);
-      preparedStory.current = undefined;
-      try {
-        await saveDraft({ id, comic: result, source: sentSource });
-      } catch {
-        setProblem(
-          "Your comic is ready, but the preview couldn't be saved. Keep this page open and try sending again.",
-        );
-      }
+      form.set("durationMs", String(recordedMs));
+      if (generation.job) await generation.dismiss();
+      await generation.start(form);
     } catch (error) {
-      if (!controller.signal.aborted)
-        setProblem(
-          error instanceof Error ? error.message : "Couldn't make your comic. Please try again.",
-        );
+      setProblem(
+        error instanceof Error ? error.message : "Couldn't make your comic. Please try again.",
+      );
     } finally {
-      active.current = null;
+      active.current = false;
       setSending(false);
     }
   }
@@ -230,6 +232,7 @@ export default function RecordPage() {
       if (!pairId) throw new Error("Connect a child device in Settings first.");
       await saveDraft({ id: comicId, comic, source: comicSource, submission });
       await deliverStory(submission, pairId);
+      await generation.dismiss();
       await clearDraft().catch(() => {});
       router.push(`/feed/${comicId}`);
     } catch (error) {
@@ -240,6 +243,7 @@ export default function RecordPage() {
     }
   }
   function startOver() {
+    void generation.dismiss().catch((e) => setProblem(e.message));
     preparedStory.current = undefined;
     void clearDraft().catch(() => setProblem("Couldn't clear the saved preview."));
     recorder.reset();
@@ -249,13 +253,13 @@ export default function RecordPage() {
     setComic(null);
     setProblem(null);
   }
-  if (restoring)
+  if (restoring || generation.loading)
     return (
       <p role="status" className="p-8">
         Opening your studio…
       </p>
     );
-  if (sending) {
+  if (sending || generation.job?.status === "working") {
     return (
       <section
         aria-busy="true"
@@ -267,20 +271,20 @@ export default function RecordPage() {
         />
         <div role="status" aria-live="polite">
           <h1 className="text-3xl font-black">Making your comic</h1>
-          <p className="mt-3 text-lg">{stage}</p>
+          <p className="mt-3 text-lg">{generation.job?.stage ?? "Saving your story…"}</p>
           <p className="mt-2 text-sm text-stone-600">
-            {drawn} of {panelCount} panels drawn
+            {generation.job?.drawn ?? 0} of {generation.job?.panel_count ?? panelCount} panels drawn
           </p>
         </div>
-        <progress
-          className="w-full accent-orange-600"
-          max={panelCount}
-          value={drawn}
-          aria-label="Panels drawn"
-        />
         <p className="text-sm text-stone-600">
-          This can take a few minutes. You’ll review it before anything is sent.
+          You can leave this page once your story is saved. Come back to review it before sending.
         </p>
+        {!sending && (
+          <Link href="/feed" className="font-bold underline">
+            Browse my comics
+          </Link>
+        )}
+        {generation.error && <p role="alert">{generation.error}</p>}
       </section>
     );
   }
@@ -295,7 +299,13 @@ export default function RecordPage() {
         <div className="my-6 space-y-4">
           {comic.format === "sticker" ? (
             <>
-              <StickerComic panels={comic.panels} title={comic.title} monochrome={printPreview} />
+              {comic.readingVersion && !printPreview ? (
+                comic.panels.map((panel, index) => (
+                  <ComicPanel key={index} {...panel} number={index + 1} />
+                ))
+              ) : (
+                <StickerComic panels={comic.panels} title={comic.title} monochrome={printPreview} />
+              )}
               <label className="flex items-center justify-center gap-2 text-sm font-bold">
                 <input
                   type="checkbox"
@@ -387,6 +397,11 @@ export default function RecordPage() {
   const initial = user?.displayName?.charAt(0).toUpperCase();
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {(generation.error || generation.job?.status === "failed") && (
+        <p role="alert" className="mx-5 mt-4 text-red-700">
+          {generation.error || generation.job?.error} Your story is kept here; try making it again.
+        </p>
+      )}
       <header className="flex items-center justify-between px-6 pt-[max(env(safe-area-inset-top),1.25rem)]">
         <div>
           <p className="text-xs font-black tracking-[0.2em] text-orange-500 uppercase">Toonie</p>

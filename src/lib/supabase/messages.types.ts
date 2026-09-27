@@ -20,6 +20,7 @@ export type ComicMessage = {
   original_transcript: string | null;
   comic_path: string;
   print_path: string | null;
+  thumbnail_path: string | null;
   audio_path: string | null;
   audio_mime_type: string | null;
   audio_duration_ms: number | null;
@@ -41,6 +42,34 @@ export type ComicMessageInsert = Pick<
 
 type ServerTable<T> = { Row: T; Insert: T; Update: Partial<T>; Relationships: [] };
 export type MessagingTables = {
+  comic_jobs: {
+    Row: {
+      id: string;
+      user_id: string;
+      status: "working" | "ready" | "failed";
+      stage: string;
+      drawn: number;
+      panel_count: number;
+      result: import("./types").Json | null;
+      audio_path: string | null;
+      audio_type: string | null;
+      audio_duration_ms: number | null;
+      original_transcript: string | null;
+      error: string | null;
+      archived: boolean;
+      created_at: string;
+    };
+    Insert: {
+      id: string;
+      user_id: string;
+      status: string;
+      stage: string;
+      panel_count: number;
+      audio_duration_ms?: number | null;
+    };
+    Update: Partial<MessagingTables["comic_jobs"]["Row"]>;
+    Relationships: [];
+  };
   pairing_codes: ServerTable<{
     code_hash: string;
     parent_id: string;

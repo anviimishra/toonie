@@ -6,6 +6,8 @@ import { z } from "zod";
 import { MAX_STORY_CHARS } from "@/lib/ai/prompts";
 import { makeComic, type ComicRequest } from "@/lib/ai/pipeline";
 import { type ComicEvent } from "@/types";
+import { after } from "next/server";
+import { createComicJob, runComicJob } from "@/lib/comic-jobs";
 /**
  * POST /api/comics — turn a recorded or typed story into a comic.
  *
@@ -108,6 +110,20 @@ export async function POST(request: Request): Promise<Response> {
     };
   } else {
     return problem(400, "Send either a recording or some text.");
+  }
+  if (new URL(request.url).searchParams.get("background") === "1") {
+    try {
+      const rawDuration = Number(form.get("durationMs"));
+      const duration =
+        comicRequest.kind === "audio" && Number.isSafeInteger(rawDuration) && rawDuration >= 0
+          ? rawDuration
+          : null;
+      const id = await createComicJob(identity.user.id, comicRequest, duration);
+      after(() => runComicJob(id, identity.user.id, comicRequest));
+      return Response.json({ id }, { status: 202 });
+    } catch (error) {
+      return apiError(error);
+    }
   }
   const encoder = new TextEncoder();
   let cancelled = false;

@@ -27,6 +27,7 @@ export type ComicPanelResult = {
 };
 
 export type Comic = {
+  readingVersion?: 1;
   format?: "sticker";
   title: string;
   transcript: string;

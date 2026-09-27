@@ -4,11 +4,10 @@ import Link from "next/link";
 import { RobotFace, type Mood } from "@/components/RobotFace";
 import { ChildConnection } from "@/components/ChildConnection";
 import { Button } from "@/components/Button";
-import { StickerComic } from "@/components/feed/StickerComic";
+import { ComicPanel } from "@/components/feed/ComicPanel";
 import { useRecorder } from "@/hooks/useRecorder";
 import { checkDraft } from "@/features/stories";
-import { apiFetch } from "@/lib/api-client";
-import { readComicStream } from "@/features/stories/generate";
+import { useComicJob, jobSource } from "@/features/stories/useComicJob";
 import { prepareStory, type PreparedStory, audioExtension } from "@/features/stories/submission";
 import { renderSticker } from "@/features/stories/export-sticker";
 import { deliverStory, getMessages, markRead, watchMessages } from "@/features/messages/client";
@@ -21,6 +20,9 @@ export default function Face() {
 }
 function ConnectedFace({ pair }: { pair: ParentChildPair }) {
   const recorder = useRecorder();
+  const generation = useComicJob(true);
+  const { start: startJob, dismiss: dismissJob, job: pendingJob } = generation;
+  const restoredJob = useRef<string | null>(null);
   const [messages, setMessages] = useState<FeedItem[]>([]),
     [opened, setOpened] = useState<FeedItem | null>(null),
     [history, setHistory] = useState(false);
@@ -29,7 +31,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
     [stage, setStage] = useState("");
   const [preview, setPreview] = useState<{ comic: Comic; prepared: PreparedStory } | null>(null),
     [sending, setSending] = useState(false);
-  const active = useRef<AbortController | null>(null),
+  const active = useRef(false),
     sendLock = useRef(false),
     mounted = useRef(true);
   const refresh = useCallback(async () => {
@@ -47,7 +49,6 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
     return () => {
       mounted.current = false;
       stop();
-      active.current?.abort();
     };
   }, [refresh]);
   useKeepAwake();
@@ -71,56 +72,80 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
   useEffect(() => {
     if (activity !== "listening" || recorder.state !== "recorded" || active.current) return;
     const audio = recorder.audio;
-    const check = checkDraft({ mode: "talk", audio, text: "", panelCount: 3 }, recorder.elapsedMs);
+    const check = checkDraft({ mode: "talk", audio, text: "", panelCount: 4 }, recorder.elapsedMs);
     if (!check.ok || !audio) {
       setProblem(check.ok ? "Record a story first." : check.reason);
       setActivity("idle");
       return;
     }
-    const controller = new AbortController();
-    active.current = controller;
+    active.current = true;
     setActivity("illustrating");
     setStage("Listening to your story…");
     void (async () => {
       try {
         const form = new FormData();
         form.set("audio", audio, `story.${audioExtension(audio.type)}`);
-        form.set("panelCount", "3");
+        form.set("panelCount", "4");
         form.set("pairId", pair.id);
-        const response = await apiFetch(
-          "/api/comics",
-          { method: "POST", body: form, signal: controller.signal },
-          true,
-        );
-        let originalTranscript: string | null = null;
-        const comic = await readComicStream(response, (event) => {
-          if (event.type === "transcribed") {
-            originalTranscript = event.transcript;
-            setStage("Writing your comic…");
-          }
-          if (event.type === "scripted") setStage("Drawing your comic…");
-        });
-        const prepared = await prepareStory(
-          crypto.randomUUID(),
-          comic,
-          {
-            kind: "voice",
-            audio,
-            durationMs: recorder.elapsedMs,
-            originalTranscript,
-          },
-          renderSticker,
-        );
-        if (mounted.current) setPreview({ comic, prepared });
+        form.set("durationMs", String(recorder.elapsedMs));
+        if (pendingJob) await dismissJob();
+        await startJob(form);
       } catch (e) {
-        if (mounted.current && !controller.signal.aborted)
+        if (mounted.current) {
+          setActivity("idle");
+        }
+        if (mounted.current)
           setProblem(e instanceof Error ? e.message : "Couldn't make your comic. Try again.");
       } finally {
-        active.current = null;
-        if (mounted.current) setActivity("idle");
+        active.current = false;
       }
     })();
-  }, [activity, recorder.state, recorder.audio, recorder.elapsedMs, pair.id]);
+  }, [
+    activity,
+    recorder.state,
+    recorder.audio,
+    recorder.elapsedMs,
+    pair.id,
+    startJob,
+    dismissJob,
+    pendingJob,
+  ]);
+  useEffect(() => {
+    const job = generation.job;
+    if (!job) return;
+    if (job.status === "working") {
+      setActivity("illustrating");
+      setStage(job.stage + " " + job.drawn + "/" + job.panel_count + " panels finished");
+      return;
+    }
+    if (job.status === "failed") {
+      if (restoredJob.current !== job.id) {
+        restoredJob.current = job.id;
+        setActivity("idle");
+        setProblem(job.error ?? "Please try recording again.");
+      }
+      return;
+    }
+    if (!job.comic || restoredJob.current === job.id) return;
+    setActivity("illustrating");
+    setStage("Preparing your reading preview…");
+    let valid = true;
+    void jobSource(job)
+      .then(async (source) => {
+        const prepared = await prepareStory(job.id, job.comic!, source, renderSticker);
+        if (valid) {
+          restoredJob.current = job.id;
+          setActivity("idle");
+          setPreview({ comic: job.comic!, prepared });
+        }
+      })
+      .catch((e) => {
+        if (valid) setProblem(e.message);
+      });
+    return () => {
+      valid = false;
+    };
+  }, [generation.job]);
   async function sendReply() {
     if (!preview || sendLock.current) return;
     sendLock.current = true;
@@ -128,6 +153,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
     setProblem("");
     try {
       await deliverStory(preview.prepared, pair.id, true);
+      await generation.dismiss();
       setPreview(null);
       recorder.reset();
       setActivity("sent");
@@ -140,6 +166,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
     }
   }
   function tap() {
+    if (generation.loading || generation.job?.status === "working") return;
     setProblem("");
     goFullscreen();
     if (mood === "mail") {
@@ -151,16 +178,19 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
       void recorder.start();
     } else if (mood === "listening" && recorder.state === "recording") recorder.stop();
   }
-  const alert = problem ? (
-    <p role="alert" className="rounded-lg bg-white p-3 text-red-700">
-      {problem}
-    </p>
-  ) : null;
+  const alert =
+    problem || generation.error ? (
+      <p role="alert" className="rounded-lg bg-white p-3 text-red-700">
+        {problem || generation.error}
+      </p>
+    ) : null;
   if (preview)
     return (
       <main className="mx-auto max-w-lg space-y-4 p-5">
         <h1 className="text-2xl font-black">{preview.comic.title}</h1>
-        <StickerComic title={preview.comic.title} panels={preview.comic.panels} />
+        {preview.comic.panels.map((panel, index) => (
+          <ComicPanel key={index} {...panel} number={index + 1} />
+        ))}
         <p>{preview.comic.transcript}</p>
         {alert}
         <Button disabled={sending} onClick={sendReply} className="w-full">
@@ -169,6 +199,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
         <button
           disabled={sending}
           onClick={() => {
+            void generation.dismiss().catch((e) => setProblem(e.message));
             setPreview(null);
             recorder.reset();
           }}
@@ -260,7 +291,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
       <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto max-w-md px-4 text-center">
         <p role="status" className="mb-3 font-bold">
           {activity === "illustrating"
-            ? stage
+            ? `${stage}. You can browse your comics or leave and come back.`
             : activity === "sent"
               ? "Sent to your grown-up!"
               : mood === "mail"
@@ -272,7 +303,7 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
         <div className="pointer-events-auto">
           {alert}
           <button
-            disabled={activity !== "idle"}
+            disabled={activity === "listening"}
             onClick={() => {
               void refresh();
               setHistory(true);

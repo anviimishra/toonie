@@ -52,7 +52,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
       {item.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={item.imageUrl}
+          src={item.thumbnailUrl ?? item.imageUrl}
           alt={item.title}
           className="aspect-square w-full rounded-xl object-contain"
         />

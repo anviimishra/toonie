@@ -104,6 +104,9 @@ describe("comic pipeline", () => {
   it("rejects invalid scripts and wrong panel counts", () => {
     expect(parseScript("bad JSON", 1)).toBeNull();
     expect(parseScript(JSON.stringify(script), 2)).toBeNull();
-    expect(parseScript(JSON.stringify(script), 1)?.panels[0].caption).toBe("");
+    expect(parseScript(JSON.stringify(script), 1)?.panels[0].caption).toBe("I found Kevin.");
+    expect(
+      parseScript(JSON.stringify({ ...script, panels: [{ scene: "Rock", caption: "" }] }), 1),
+    ).toBeNull();
   });
 });

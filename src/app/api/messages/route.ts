@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         const ownRole = pair.parent_id === user.id ? "parent" : "child";
         const paths = [
           m.comic_path,
+          ...(m.thumbnail_path ? [m.thumbnail_path] : []),
           ...(m.audio_path ? [m.audio_path] : []),
           ...(m.print_path ? [m.print_path] : []),
         ];
@@ -40,8 +41,9 @@ export async function GET(request: Request) {
           panelCount: m.panel_count,
           panels: [],
           imageUrl: media(m.comic_path),
+          thumbnailUrl: media(m.thumbnail_path),
           audioUrl: media(m.audio_path),
-          printUrl: media(m.print_path),
+          printUrl: m.sender_role === "parent" ? media(m.print_path) : undefined,
           direction: m.sender_role === ownRole ? "sent" : "received",
           status: m.sender_role !== ownRole && !m.read_at ? "new" : "seen",
           sender: {

@@ -54,7 +54,7 @@ export function ComicPanel({
           // Generated images come from arbitrary storage URLs, which next/image
           // would need configuring for. A plain img is fine for a single panel.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={label ?? ""} className="block size-full object-cover" />
+          <img src={imageUrl} alt={label ?? ""} className="block size-full object-contain" />
         ) : (
           <SceneArt scene={scene} label={label} />
         )}

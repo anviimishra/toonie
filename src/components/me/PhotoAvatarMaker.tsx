@@ -101,7 +101,7 @@ export function PhotoAvatarMaker({ initial, isSaved, onSave, onTweak, saving }: 
     >
       <CameraIcon className="size-5" />
       {text}
-      <input type="file" accept="image/*" capture="user" onChange={pick} className="sr-only" />
+      <input type="file" accept="image/*" onChange={pick} className="sr-only" />
     </label>
   );
 
@@ -129,13 +129,17 @@ export function PhotoAvatarMaker({ initial, isSaved, onSave, onTweak, saving }: 
         <AvatarStage
           below={
             <p className="text-sm font-bold text-stone-500">
-              {shownPhoto ? "Nice one! Ready when you are." : "Big smile!"}
+              {shownPhoto ? "Nice one! Ready when you are." : "Choose a clear photo of your face."}
             </p>
           }
         >
           {shownPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={shownPhoto} alt="Your selfie" className="me-pop size-full object-cover" />
+            <img
+              src={shownPhoto}
+              alt="Your uploaded photo"
+              className="me-pop size-full object-cover"
+            />
           ) : (
             <span className="grid size-full place-items-center rounded-full border-4 border-dashed border-orange-200 bg-orange-50 text-orange-400">
               <CameraIcon className="size-14" />
@@ -173,10 +177,10 @@ export function PhotoAvatarMaker({ initial, isSaved, onSave, onTweak, saving }: 
               <SparkleIcon className="size-5" />
               {phase === "generating" ? "Drawing…" : "Make my avatar"}
             </Button>
-            {phase !== "generating" && pickLabel(false, "Retake")}
+            {phase !== "generating" && pickLabel(false, "Choose another photo")}
           </>
         ) : (
-          pickLabel(true, "Take a selfie")
+          pickLabel(true, "Upload a photo")
         )}
 
         {problem && (

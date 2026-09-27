@@ -1,0 +1,12 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set search_path = public,extensions;
+select plan(4);
+select ok((select relrowsecurity from pg_class where oid='public.comic_jobs'::regclass), 'Draft jobs have RLS');
+select ok(not (select public from storage.buckets where id='comic-drafts'), 'Draft images are private');
+set local role authenticated;
+select throws_ok('select * from public.comic_jobs', '42501', null, 'Clients cannot enumerate other users jobs');
+select throws_ok($$insert into public.comic_jobs(id,user_id,status,stage,panel_count) values (gen_random_uuid(),gen_random_uuid(),'working','Draw',3)$$, '42501', null, 'Clients cannot forge jobs');
+reset role;
+select * from finish();
+rollback;
