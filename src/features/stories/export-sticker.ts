@@ -1,8 +1,13 @@
 import type { ComicPanelResult } from "@/types";
+import { PRINT_WIDTH_DOTS, ditherToMono } from "./print";
 import { STICKER_EXPORT_PX, stickerRects } from "./sticker";
 
-export async function renderSticker(panels: ComicPanelResult[], monochrome = false): Promise<Blob> {
-  const rects = stickerRects(panels.length);
+/** Draws the sticker (white background, panels, borders) at `size` × `size` px. */
+async function drawSticker(
+  panels: ComicPanelResult[],
+  size = STICKER_EXPORT_PX,
+): Promise<HTMLCanvasElement> {
+  const rects = stickerRects(panels.length, size);
   const images = await Promise.all(
     panels.map(async (panel) => {
       if (!panel.imageUrl) throw new Error("Every panel must finish before downloading.");
@@ -14,14 +19,14 @@ export async function renderSticker(panels: ComicPanelResult[], monochrome = fal
     }),
   );
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = STICKER_EXPORT_PX;
+  canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("This browser couldn't prepare the sticker.");
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   images.forEach((image, index) => {
     const r = rects[index];
-    const border = STICKER_EXPORT_PX * 0.005;
+    const border = Math.max(1, size * 0.005);
     const scale = Math.min(
       (r.width - border * 2) / image.naturalWidth,
       (r.height - border * 2) / image.naturalHeight,
@@ -33,6 +38,12 @@ export async function renderSticker(panels: ComicPanelResult[], monochrome = fal
     ctx.lineWidth = border;
     ctx.strokeRect(r.x + border / 2, r.y + border / 2, r.width - border, r.height - border);
   });
+  return canvas;
+}
+
+export async function renderSticker(panels: ComicPanelResult[], monochrome = false): Promise<Blob> {
+  const canvas = await drawSticker(panels);
+  const ctx = canvas.getContext("2d")!;
   // A true black/white raster, matching the preview and avoiding thermal gray mush.
   if (monochrome) {
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -44,6 +55,24 @@ export async function renderSticker(panels: ComicPanelResult[], monochrome = fal
     }
     ctx.putImageData(pixels, 0, 0);
   }
+  return toPng(canvas);
+}
+
+/**
+ * The sticker for the Bluetooth label printer: exactly PRINT_WIDTH_DOTS wide,
+ * already 1-bit (dithered) on an opaque white background, so the printer
+ * script can send it without resizing or re-dithering it.
+ */
+export async function renderPrintImage(panels: ComicPanelResult[]): Promise<Blob> {
+  const canvas = await drawSticker(panels, PRINT_WIDTH_DOTS);
+  const ctx = canvas.getContext("2d")!;
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  ditherToMono(pixels.data, canvas.width, canvas.height);
+  ctx.putImageData(pixels, 0, 0);
+  return toPng(canvas);
+}
+
+function toPng(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (result) => (result ? resolve(result) : reject(new Error("Couldn't export the sticker."))),
