@@ -59,6 +59,18 @@ function Expression({ mood }: { mood: Mood }) {
             d={`M${RIGHT - 11} ${EYE_Y} Q${RIGHT} ${EYE_Y + 8} ${RIGHT + 11} ${EYE_Y}`}
           />
           <path {...line} strokeWidth={3} d={`M74 ${MOUTH_Y} Q80 ${MOUTH_Y + 3} 86 ${MOUTH_Y}`} />
+          {/* Snoring: Zs drift up past the right eye, small to big. */}
+          <g className="fill-accent" fontWeight={900} aria-hidden="true">
+            <text className="face-snore" style={delay(0)} x="122" y="30" fontSize="10">
+              z
+            </text>
+            <text className="face-snore" style={delay(1)} x="130" y="23" fontSize="13">
+              z
+            </text>
+            <text className="face-snore" style={delay(2)} x="139" y="15" fontSize="17">
+              Z
+            </text>
+          </g>
         </g>
       );
 
