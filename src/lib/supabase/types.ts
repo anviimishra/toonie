@@ -17,10 +17,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export const STORY_SOURCES = ["app", "robot"] as const;
 export const STORY_STATUSES = ["transcribing", "scripting", "drawing", "ready", "failed"] as const;
 export const DELIVERY_STATUSES = ["queued", "printed"] as const;
+export const ROBOT_MOODS = ["sleeping", "listening", "mail", "illustrating", "sent"] as const;
 
 export type StorySource = (typeof STORY_SOURCES)[number];
 export type StoryStatus = (typeof STORY_STATUSES)[number];
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+export type RobotMood = (typeof ROBOT_MOODS)[number];
 
 export type Database = {
   public: {
@@ -215,6 +217,27 @@ export type Database = {
           },
         ];
       };
+      robot_states: {
+        Row: {
+          id: string;
+          mood: RobotMood;
+          mail_received: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          mood?: RobotMood;
+          mail_received?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          mood?: RobotMood;
+          mail_received?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
@@ -222,6 +245,7 @@ export type Database = {
       story_source: StorySource;
       story_status: StoryStatus;
       delivery_status: DeliveryStatus;
+      robot_mood: RobotMood;
     };
     CompositeTypes: Record<never, never>;
   };
@@ -236,12 +260,14 @@ export type Member = Tables["members"]["Row"];
 export type Device = Tables["devices"]["Row"];
 export type Story = Tables["stories"]["Row"];
 export type Delivery = Tables["deliveries"]["Row"];
+export type RobotState = Tables["robot_states"]["Row"];
 
 export type CapsuleInsert = Tables["capsules"]["Insert"];
 export type MemberInsert = Tables["members"]["Insert"];
 export type DeviceInsert = Tables["devices"]["Insert"];
 export type StoryInsert = Tables["stories"]["Insert"];
 export type DeliveryInsert = Tables["deliveries"]["Insert"];
+export type RobotStateUpdate = Tables["robot_states"]["Update"];
 
 /** Buckets created by the migration. */
 export const BUCKET_AUDIO = "audio";

@@ -85,7 +85,8 @@ export function useRecorder(): Recorder {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
+    } catch (error) {
+      console.warn("[recorder] microphone unavailable", error);
       setState("denied");
       return;
     }

@@ -65,3 +65,342 @@ body {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Robot mascot (src/components/Robot.tsx) */
+@keyframes robot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes robot-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.12;
+  }
+  50% {
+    transform: scaleX(0.8);
+    opacity: 0.07;
+  }
+}
+
+@keyframes robot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes robot-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-18deg);
+  }
+  75% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes robot-glow {
+  0%,
+  100% {
+    fill: var(--accent);
+  }
+  50% {
+    fill: #fdba74;
+  }
+}
+
+.robot-float {
+  animation: robot-float 3s ease-in-out infinite;
+  overflow: visible;
+}
+
+.robot-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robot-shadow 3s ease-in-out infinite;
+}
+
+.robot-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robot-blink 4s ease-in-out infinite;
+}
+
+.robot-wave {
+  transform-box: view-box;
+  transform-origin: 142px 160px;
+  animation: robot-wave 1.6s ease-in-out infinite;
+}
+
+.robot-glow {
+  animation: robot-glow 2s ease-in-out infinite;
+}
+
+/* Fade-and-rise entrance; set --delay inline to stagger items. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.6s ease-out both;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Splash screen extras (src/app/page.tsx) */
+
+/* Springy entrance: overshoots, then settles. */
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(3deg);
+  }
+  80% {
+    transform: scale(0.95) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.pop-in {
+  animation: pop-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* The glowing sun behind the splash robot. */
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.sun-pulse {
+  animation: sun-pulse 3s ease-in-out infinite;
+}
+
+/* Each letter hops in turn, like a wave. */
+@keyframes letter-bounce {
+  0%,
+  40%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  15% {
+    transform: translateY(-18px) scale(1.08, 0.95);
+  }
+  28% {
+    transform: translateY(0) scale(1.1, 0.9);
+  }
+}
+
+.letter-bounce {
+  animation: letter-bounce 2.4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Chunky "sticker" outline on white text. */
+.sticker-text {
+  text-shadow:
+    0 4px 0 #c2410c,
+    0 8px 18px rgba(124, 45, 18, 0.35);
+}
+
+@keyframes tap-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.96);
+  }
+}
+
+.tap-pulse {
+  animation: tap-pulse 1.6s ease-in-out infinite;
+}
+
+/* Background shapes bob and turn slowly (src/components/FloatingShapes.tsx). */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(8px, -14px) rotate(12deg);
+  }
+  66% {
+    transform: translate(-6px, -6px) rotate(-8deg);
+  }
+}
+
+.drift {
+  animation: drift var(--duration, 8s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Full-screen robot face (src/components/RobotFace.tsx, /face) */
+
+/* New mood: the face pops into place. */
+@keyframes face-swap {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.face-swap {
+  animation: face-swap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Sleeping: slow breathing. */
+@keyframes face-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03) translateY(2px);
+  }
+}
+
+.face-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: face-breathe 4s ease-in-out infinite;
+}
+
+@keyframes face-twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.face-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: face-twinkle 2s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* Mail: the whole face hops. */
+@keyframes face-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-14px);
+  }
+  40% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+}
+
+.face-hop {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: face-hop 1.4s ease-in-out infinite;
+}
+
+/* Illustrating: thought bubbles pop up in turn; eye shine drifts upward. */
+@keyframes face-bubble {
+  0%,
+  10% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  30%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+.face-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: face-bubble 2.4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes face-ponder {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  40%,
+  60% {
+    transform: translate(2px, -2.5px);
+  }
+}
+
+.face-ponder {
+  animation: face-ponder 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face-bubble,
+  .face-ponder,
+  .face-swap,
+  .face-breathe,
+  .face-twinkle,
+  .face-hop,
+  .pop-in,
+  .sun-pulse,
+  .letter-bounce,
+  .tap-pulse,
+  .drift,
+  .robot-float,
+  .robot-shadow,
+  .robot-blink,
+  .robot-wave,
+  .robot-glow,
+  .rise-in {
+    animation: none;
+  }
+}
