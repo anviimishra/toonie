@@ -63,6 +63,25 @@ export function PairingSettings() {
       setBusy(false);
     }
   }
+  async function removeChild(target: ParentChildPair) {
+    const sure = window.confirm(
+      `Remove ${target.child_name}? This disconnects their device and deletes the comics you've sent each other.`,
+    );
+    if (!sure) return;
+    setBusy(true);
+    setProblem("");
+    setNotice("");
+    try {
+      await apiJson("/api/pairs", { ...jsonBody({ id: target.id }), method: "DELETE" });
+      setPair(null);
+      setCode(null);
+      setNotice(`${target.child_name} was removed.`);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "Couldn't remove the child.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="rounded-2xl bg-white p-5" aria-label="Connect child device">
       <h2 className="text-xl font-black">
@@ -106,6 +125,13 @@ export function PairingSettings() {
             className="mt-1 text-sm underline"
           >
             Sync current child avatar
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => removeChild(pair)}
+            className="mt-1 ml-4 text-sm text-red-700 underline"
+          >
+            Remove child
           </button>
         </div>
       )}

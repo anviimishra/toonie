@@ -4,6 +4,7 @@ import Link from "next/link";
 import { RobotFace, type Mood } from "@/components/RobotFace";
 import { ChildConnection } from "@/components/ChildConnection";
 import { Button } from "@/components/Button";
+import { LogoutIcon } from "@/components/icons";
 import { ComicPanel } from "@/components/feed/ComicPanel";
 import { ReadAloud } from "@/components/ReadAloud";
 import { useRecorder } from "@/hooks/useRecorder";
@@ -17,9 +18,19 @@ import type { FeedItem } from "@/features/feed/types";
 import type { Comic } from "@/types";
 
 export default function Face() {
-  return <ChildConnection>{(pair) => <ConnectedFace pair={pair} />}</ChildConnection>;
+  return (
+    <ChildConnection>
+      {(pair, signOut) => <ConnectedFace pair={pair} signOut={signOut} />}
+    </ChildConnection>
+  );
 }
-function ConnectedFace({ pair }: { pair: ParentChildPair }) {
+function ConnectedFace({
+  pair,
+  signOut,
+}: {
+  pair: ParentChildPair;
+  signOut: () => Promise<void>;
+}) {
   const recorder = useRecorder();
   const resetRecorder = recorder.reset;
   const generation = useComicJob(true);
@@ -323,6 +334,17 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
         </span>
         {pair.child_name}
       </p>
+      {/* Deliberately faint: for grown-ups switching a tablet to another code. */}
+      <button
+        onClick={() => {
+          if (window.confirm(`Sign ${pair.child_name} out of this device?`))
+            void signOut().catch((e) => setProblem(e.message));
+        }}
+        aria-label="Sign out of this device"
+        className="absolute top-[max(env(safe-area-inset-top),1rem)] right-3 grid size-10 place-items-center rounded-full text-stone-400 opacity-40 hover:opacity-100"
+      >
+        <LogoutIcon className="size-5" />
+      </button>
       <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto max-w-md px-4 text-center">
         <p role="status" className="mb-3 font-bold">
           {activity === "illustrating"
