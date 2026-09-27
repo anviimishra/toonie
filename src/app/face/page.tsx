@@ -5,7 +5,6 @@ import { RobotFace, type Mood } from "@/components/RobotFace";
 import { ChildConnection } from "@/components/ChildConnection";
 import { Button } from "@/components/Button";
 import { ComicPanel } from "@/components/feed/ComicPanel";
-import { StickerComic } from "@/components/feed/StickerComic";
 import { ReadAloud } from "@/components/ReadAloud";
 import { useRecorder } from "@/hooks/useRecorder";
 import { checkDraft } from "@/features/stories";

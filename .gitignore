@@ -40,3 +40,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# latest generated comic, written locally by /api/local-save
+/toonie-comic.png
+/toonie-comic.png.tmp
+/toonie-print.png
+/toonie-print.png.tmp
+
+# python
+__pycache__/
+*.pyc

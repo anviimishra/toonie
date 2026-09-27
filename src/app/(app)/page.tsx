@@ -16,6 +16,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadInput, saveInput, clearDraft, loadDraft, saveDraft } from "@/features/stories/storage";
 import { useComicJob, jobSource } from "@/features/stories/useComicJob";
+import { apiFetch } from "@/lib/api-client";
+import { LOCAL_COMIC_FILE, LOCAL_PRINT_FILE } from "@/lib/local-save";
 import { deliverStory, getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 import { avatars } from "@/features/avatar";
@@ -31,7 +33,11 @@ import {
   type PreparedStory,
   type StorySource,
 } from "@/features/stories/submission";
-import { downloadSticker, renderSticker } from "@/features/stories/export-sticker";
+import {
+  downloadSticker,
+  renderPrintImage,
+  renderSticker,
+} from "@/features/stories/export-sticker";
 import { ComicPanel } from "@/components/feed/ComicPanel";
 import type { Comic } from "@/types";
 import { useRecorder } from "@/hooks/useRecorder";
@@ -98,6 +104,7 @@ export default function RecordPage() {
         if (!mounted) return;
         restoredJob.current = job.id;
         setComic(job.comic!);
+        void saveComicLocally(job.id, job.comic!);
         setComicId(job.id);
         setComicSource(savedSource);
         setSource(savedSource);
@@ -508,4 +515,38 @@ export default function RecordPage() {
       </div>
     </div>
   );
+}
+
+/** The last comic written to disk, so reopening the page doesn't rewrite (and reprint) it. */
+const LOCAL_SAVED_KEY = "toonie.local-saved-comic";
+
+/**
+ * Local development: also write the finished comic to the project folder, in
+ * color (toonie-comic.png) and ready for the label printer (toonie-print.png),
+ * where printer/watch_and_print.py picks it up. Once per comic; best effort;
+ * never blocks the screen. See /api/local-save.
+ */
+async function saveComicLocally(comicId: string, comic: Comic) {
+  if (process.env.NODE_ENV === "production") return;
+  try {
+    if (window.localStorage.getItem(LOCAL_SAVED_KEY) === comicId) return;
+  } catch {
+    // Storage unavailable: saving twice is harmless.
+  }
+  try {
+    // The sticker's own panels, the same ones shown and downloaded.
+    const panels = comic.stickerPanels ?? comic.panels;
+    const form = new FormData();
+    const [image, print] = await Promise.all([renderSticker(panels), renderPrintImage(panels)]);
+    form.set("image", image, LOCAL_COMIC_FILE);
+    form.set("print", print, LOCAL_PRINT_FILE);
+    const response = await apiFetch("/api/local-save", { method: "POST", body: form });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error);
+    try {
+      window.localStorage.setItem(LOCAL_SAVED_KEY, comicId);
+    } catch {}
+    console.info(`[comic] saved ${LOCAL_COMIC_FILE} and ${LOCAL_PRINT_FILE} in the project folder`);
+  } catch (error) {
+    console.warn("[comic] couldn't save the PNGs to the project folder", error);
+  }
 }
