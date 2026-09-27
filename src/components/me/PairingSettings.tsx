@@ -41,7 +41,16 @@ export function PairingSettings() {
     setProblem("");
     setNotice("");
     try {
-      setCode(await apiJson("/api/pairing/code", jsonBody({ name, reference: await reference() })));
+      setCode(
+        await apiJson(
+          "/api/pairing/code",
+          jsonBody({
+            // A connected child keeps their name; only a new child is named here.
+            name: pair?.child_name ?? name,
+            reference: await reference(),
+          }),
+        ),
+      );
     } catch (e) {
       setProblem(e instanceof Error ? e.message : "Couldn't create code.");
     } finally {
@@ -87,22 +96,37 @@ export function PairingSettings() {
       <h2 className="text-xl font-black">
         {pair ? "Your child's device" : "Connect a child device"}
       </h2>
-      <p className="mt-2 text-sm text-stone-600">
-        {pair
-          ? "Lost the connection or switching tablets? Make a new code and enter it on the child's device. Your comics stay, and the old device is disconnected."
-          : "Save the child's avatar above, then make a code. On the other device, choose “I'm the kid” and enter it."}
-      </p>
-      <label className="mt-4 block text-sm font-bold">
-        Child&apos;s name
-        <input
-          value={name}
-          maxLength={60}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-stone-300 p-3"
-        />
-      </label>
-      <Button onClick={createCode} disabled={busy || !name.trim()} className="mt-3 w-full">
-        {busy ? "Working…" : pair ? "Get a code to reconnect" : "Generate five-digit code"}
+      {pair ? (
+        <>
+          <p className="mt-2 font-bold">{pair.child_name} · Connected</p>
+          <p className="mt-1 text-sm text-stone-600">
+            Switching tablets or signed out? Get a new code and enter it on the child&apos;s device.
+            Your comics stay.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-stone-600">
+            Save the child&apos;s avatar above, then make a code. On the other device, choose
+            “I&apos;m the kid” and enter it.
+          </p>
+          <label className="mt-4 block text-sm font-bold">
+            Child&apos;s name
+            <input
+              value={name}
+              maxLength={60}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-stone-300 p-3"
+            />
+          </label>
+        </>
+      )}
+      <Button
+        onClick={createCode}
+        disabled={busy || (!pair && !name.trim())}
+        className="mt-3 w-full"
+      >
+        {busy ? "Working…" : pair ? "Get a new code" : "Generate five-digit code"}
       </Button>
       {code && (
         <div className="mt-4 text-center" role="status">
@@ -117,19 +141,14 @@ export function PairingSettings() {
         </div>
       )}
       {pair && (
-        <div className="mt-5 border-t border-stone-200 pt-3">
-          <p className="font-bold">{pair.child_name} · Connected</p>
-          <button
-            disabled={busy}
-            onClick={() => syncAvatar(pair.id)}
-            className="mt-1 text-sm underline"
-          >
+        <div className="mt-4 flex gap-4 border-t border-stone-200 pt-3">
+          <button disabled={busy} onClick={() => syncAvatar(pair.id)} className="text-sm underline">
             Sync current child avatar
           </button>
           <button
             disabled={busy}
             onClick={() => removeChild(pair)}
-            className="mt-1 ml-4 text-sm text-red-700 underline"
+            className="text-sm text-red-700 underline"
           >
             Remove child
           </button>
