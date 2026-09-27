@@ -33,7 +33,7 @@ const NEXT: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -
 const RAISED =
   "bg-white shadow-chip hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none";
 const SUNK =
-  "translate-y-0.5 bg-orange-50 shadow-[inset_0_2px_5px_rgb(154_52_18/0.22)] ring-3 ring-orange-500";
+  "translate-y-0.5 bg-orange-50 shadow-[inset_0_2px_5px_rgb(103_29_154/0.22)] ring-3 ring-orange-500";
 
 /**
  * A labelled row of one-tap choices that behaves as a real radio group:
@@ -127,7 +127,7 @@ export function ChipRadioGroup<T extends string>({
               {variant !== "text" && selected && (
                 <span
                   aria-hidden="true"
-                  className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-orange-500 text-white shadow-[0_2px_4px_rgb(154_52_18/0.35)] ring-2 ring-white"
+                  className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-orange-500 text-white shadow-[0_2px_4px_rgb(103_29_154/0.35)] ring-2 ring-white"
                 >
                   <CheckIcon className="size-3" strokeWidth={3.5} />
                 </span>

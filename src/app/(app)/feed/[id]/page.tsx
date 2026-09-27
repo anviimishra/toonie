@@ -155,7 +155,7 @@ export default function ComicPage() {
               </button>
             )}
             {downloadError && (
-              <p role="alert" className="text-sm text-red-700">
+              <p role="alert" className="text-sm text-red-600">
                 {downloadError}
               </p>
             )}
@@ -166,7 +166,7 @@ export default function ComicPage() {
                 <p className="mt-2 whitespace-pre-wrap">{item.transcript}</p>
               </details>
             )}
-            <p className="pb-1 text-center text-xs font-black tracking-[0.3em] text-stone-400 uppercase">
+            <p className="pb-1 text-center text-xs font-black tracking-[0.2em] text-stone-400 uppercase">
               The end
             </p>
           </article>

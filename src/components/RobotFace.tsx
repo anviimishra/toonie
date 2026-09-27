@@ -144,7 +144,7 @@ function Expression({ mood }: { mood: Mood }) {
             strokeWidth={3}
             d={`M73 ${MOUTH_Y} Q77 ${MOUTH_Y - 3} 81 ${MOUTH_Y} Q85 ${MOUTH_Y + 3} 88 ${MOUTH_Y}`}
           />
-          <path className="fill-pink-400" d={`M84 ${MOUTH_Y + 1.5} q0 5 3.5 5 q3.5 0 3 -5 z`} />
+          <path className="fill-rose-400" d={`M84 ${MOUTH_Y + 1.5} q0 5 3.5 5 q3.5 0 3 -5 z`} />
         </g>
       );
 

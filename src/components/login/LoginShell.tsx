@@ -13,7 +13,7 @@ export function LoginShell({ children }: Readonly<{ children: React.ReactNode }>
         <div className="absolute -bottom-24 left-1/4 size-72 rounded-full bg-amber-200/50 blur-3xl" />
       </div>
 
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col px-3 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:border-x sm:border-orange-100/70 sm:bg-white/20 sm:shadow-[0_0_60px_-20px_rgb(120_53_15/0.25)]">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col px-3 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:border-x sm:border-orange-100/70 sm:bg-white/20 sm:shadow-[0_0_60px_-20px_rgb(83_25_123/0.25)]">
         {children}
       </main>
     </div>

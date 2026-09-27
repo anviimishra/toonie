@@ -15,7 +15,7 @@ export const viewport: Viewport = {
   // Lets the layout paint under the notch and home indicator; the tab bar pads
   // itself back out with env(safe-area-inset-bottom).
   viewportFit: "cover",
-  themeColor: "#fff7ed",
+  themeColor: "#f9f0ff",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

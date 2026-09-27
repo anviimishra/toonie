@@ -1,4 +1,4 @@
-import { createLocalAvatars } from "./local";
+import { CHILD_AVATAR_KEY, createLocalAvatars } from "./local";
 import type { AvatarAdapter } from "./types";
 
 export type { Avatar, AvatarAdapter, AvatarConfig, AvatarSource } from "./types";
@@ -29,3 +29,6 @@ export { MAX_PHOTO_BYTES, checkPhoto } from "./photo";
 
 /** Avatars stay on this browser; photo generation uses the server API. */
 export const avatars: AvatarAdapter = createLocalAvatars();
+
+/** The child's avatar: the co-star of the comics. Stored separately. */
+export const childAvatars: AvatarAdapter = createLocalAvatars(CHILD_AVATAR_KEY);

@@ -57,7 +57,7 @@ export default function FeedPage() {
             "grid size-11 place-items-center rounded-full ring-2 ring-white",
             newCount > 0
               ? "bg-linear-to-b from-orange-400 to-orange-600 text-white shadow-raised"
-              : "bg-linear-to-b from-amber-200 to-orange-300 text-orange-900 shadow-[0_4px_10px_-2px_rgb(154_52_18/0.35),inset_0_1px_0_rgb(255_255_255/0.6)]",
+              : "bg-linear-to-b from-amber-200 to-orange-300 text-orange-900 shadow-[0_4px_10px_-2px_rgb(103_29_154/0.35),inset_0_1px_0_rgb(255_255_255/0.6)]",
           ].join(" ")}
         >
           {newCount > 0 ? (

@@ -22,7 +22,7 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
           <div className="absolute -bottom-24 left-1/4 size-72 rounded-full bg-amber-200/50 blur-3xl" />
         </div>
 
-        <div className="mx-auto flex h-dvh max-w-md flex-col sm:border-x sm:border-orange-100/70 sm:bg-white/20 sm:shadow-[0_0_60px_-20px_rgb(120_53_15/0.25)]">
+        <div className="mx-auto flex h-dvh max-w-md flex-col sm:border-x sm:border-orange-100/70 sm:bg-white/20 sm:shadow-[0_0_60px_-20px_rgb(83_25_123/0.25)]">
           <main className="flex min-h-0 flex-1 flex-col">{children}</main>
           <TabBar />
         </div>

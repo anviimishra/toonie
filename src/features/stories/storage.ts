@@ -68,7 +68,7 @@ export async function sendToFeed(draft: ComicDraft, name: string): Promise<void>
     transcript: draft.comic.transcript,
     title: draft.comic.title,
     panels: draft.comic.panels,
-    sender: { name, color: "#fdba74" },
+    sender: { name, color: "#d59bfd" },
     status: "seen",
     direction: "sent",
     createdAt: new Date().toISOString(),

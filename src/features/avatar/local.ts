@@ -2,16 +2,24 @@ import { normalizeAvatar } from "./config";
 import { checkPhoto, photoToDataUrl } from "./photo";
 import { DEFAULT_AVATAR_CONFIG } from "./config";
 import type { Avatar, AvatarAdapter } from "./types";
-/** Browser-local avatar persistence with real Grok photo generation. */
-const KEY = "toonie.avatar";
-function write(avatar: Avatar): void {
-  window.localStorage.setItem(KEY, JSON.stringify(avatar));
-}
-export function createLocalAvatars(): AvatarAdapter {
+/** Where the grown-up's own avatar is kept. */
+export const AVATAR_KEY = "toonie.avatar";
+/** Where the child's avatar is kept. */
+export const CHILD_AVATAR_KEY = "toonie.child-avatar";
+
+/**
+ * Browser-local avatar persistence with real Grok photo generation. One
+ * stored avatar per key, so the grown-up and the child each get their own.
+ */
+export function createLocalAvatars(key: string = AVATAR_KEY): AvatarAdapter {
+  function write(avatar: Avatar): void {
+    window.localStorage.setItem(key, JSON.stringify(avatar));
+  }
+
   return {
     async get() {
       if (typeof window === "undefined") return null;
-      const raw = window.localStorage.getItem(KEY);
+      const raw = window.localStorage.getItem(key);
       if (!raw) return null;
       try {
         return normalizeAvatar(JSON.parse(raw));

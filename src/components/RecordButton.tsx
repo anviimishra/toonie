@@ -33,7 +33,7 @@ export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
 
   const face = recording
     ? "from-rose-400 to-red-600 shadow-[0_18px_36px_-10px_rgb(220_38_38/0.7),inset_0_2px_0_rgb(255_255_255/0.45),inset_0_-8px_14px_rgb(127_29_29/0.35)]"
-    : "from-orange-400 to-orange-600 shadow-[0_20px_40px_-12px_rgb(234_88_12/0.75),inset_0_2px_0_rgb(255_255_255/0.45),inset_0_-8px_14px_rgb(154_52_18/0.35)]";
+    : "from-orange-400 to-orange-600 shadow-[0_20px_40px_-12px_rgb(150_35_231/0.75),inset_0_2px_0_rgb(255_255_255/0.45),inset_0_-8px_14px_rgb(103_29_154/0.35)]";
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -54,7 +54,7 @@ export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
         {/* The well the button sits in. */}
         <span
           aria-hidden="true"
-          className="absolute inset-[9%] rounded-full bg-linear-to-b from-orange-100 to-white shadow-[inset_0_6px_14px_rgb(154_52_18/0.18),0_1px_0_rgb(255_255_255)]"
+          className="absolute inset-[9%] rounded-full bg-linear-to-b from-orange-100 to-white shadow-[inset_0_6px_14px_rgb(103_29_154/0.18),0_1px_0_rgb(255_255_255)]"
         />
 
         <button
@@ -88,7 +88,7 @@ export function RecordButton({ state, elapsedMs, onStart, onStop }: Props) {
 
       <div className="flex h-12 flex-col items-center justify-start">
         {recording ? (
-          <p className="font-mono text-3xl font-bold text-red-600 tabular-nums">
+          <p className="text-3xl font-black text-red-600 tabular-nums">
             {formatDuration(elapsedMs)}
           </p>
         ) : null}
