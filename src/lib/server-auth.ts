@@ -13,12 +13,28 @@ export class ApiError extends Error {
 export function apiError(error: unknown): Response {
   if (error instanceof ApiError)
     return Response.json({ error: error.message }, { status: error.status });
-  console.error("[api]", error instanceof Error ? error.message : "Request failed");
+  console.error("[api]", describeError(error));
   return Response.json(
     { error: "Couldn't complete that request. Please try again." },
     { status: 500 },
   );
 }
+/**
+ * Something readable for the server log. Supabase returns plain objects
+ * ({ message, code, details }), not Error instances, so check for both.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const { message, code, details, hint } = error as Record<string, unknown>;
+    const parts = [code && `[${code}]`, message, details, hint].filter(
+      (part) => typeof part === "string" && part,
+    );
+    if (parts.length) return parts.join(" ");
+  }
+  return "Request failed";
+}
+
 export async function requireUser(request: Request) {
   const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
   if (!token) throw new ApiError(401, "Please sign in again.");
