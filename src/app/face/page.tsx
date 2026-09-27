@@ -97,8 +97,10 @@ export default function Face() {
 
     setActivity("illustrating");
     const minWait = new Promise((resolve) => setTimeout(resolve, MIN_ILLUSTRATING_MS));
-    Promise.all([stories.create(draft), minWait])
-      .then(([story]) => {
+    const audio = recorder.audio!;
+    Promise.all([transcribeRecording(audio), stories.create(draft), minWait])
+      .then(([transcript, story]) => {
+        log("transcript:", transcript);
         log("story sent", story);
         setActivity("sent");
         timers.current.push(setTimeout(() => goToSleep(), SENT_MS));
@@ -146,9 +148,7 @@ export default function Face() {
       type="button"
       onClick={tap}
       aria-label={asleep ? "Tap to wake the robot" : "Tap the robot"}
-      className={`fixed inset-0 flex cursor-pointer items-center justify-center transition-colors duration-700 focus-visible:outline-none ${
-        asleep ? "bg-stone-900 text-orange-200/70" : "bg-background text-foreground"
-      }`}
+      className="bg-background text-foreground fixed inset-0 flex cursor-pointer items-center justify-center focus-visible:outline-none"
     >
       <div key={mood} className="face-swap h-full w-full">
         <RobotFace mood={mood} className="h-full w-full" />
@@ -158,6 +158,36 @@ export default function Face() {
       </span>
     </button>
   );
+}
+
+/** Sends the recording to our server, which asks xAI for the words. */
+async function transcribeRecording(audio: Blob): Promise<string> {
+  const form = new FormData();
+  form.append("audio", audio);
+  const response = await postWithRetry("/api/transcribe", form);
+  const data = (await response.json().catch(() => ({}))) as { text?: string; error?: string };
+  if (!response.ok || typeof data.text !== "string") {
+    throw new Error(data.error ?? `Transcription failed (${response.status})`);
+  }
+  return data.text;
+}
+
+/**
+ * fetch() only throws when the request never got an answer (connection dropped,
+ * page reloading, phone switching networks). Try once more before giving up.
+ */
+async function postWithRetry(url: string, body: FormData): Promise<Response> {
+  try {
+    return await fetch(url, { method: "POST", body });
+  } catch (error) {
+    log("upload didn't reach the server, retrying once", {
+      error: String(error),
+      page: location.origin,
+      online: navigator.onLine,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return fetch(url, { method: "POST", body });
+  }
 }
 
 /** Console logging for debugging, prefixed so it's easy to filter ("[face]"). */

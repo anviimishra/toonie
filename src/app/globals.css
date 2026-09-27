@@ -300,27 +300,53 @@ body {
   animation: face-hop 1.4s ease-in-out infinite;
 }
 
-/* Illustrating: pupils dart side to side. */
-@keyframes face-scan {
+/* Illustrating: thought bubbles pop up in turn; eye shine drifts upward. */
+@keyframes face-bubble {
   0%,
-  100% {
-    transform: translateX(-5px);
+  10% {
+    opacity: 0;
+    transform: scale(0.3);
   }
-  50% {
-    transform: translateX(5px);
+  30%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
   }
 }
 
-.face-scan {
-  animation: face-scan 1s ease-in-out infinite;
+.face-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: face-bubble 2.4s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes face-ponder {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  40%,
+  60% {
+    transform: translate(2px, -2.5px);
+  }
+}
+
+.face-ponder {
+  animation: face-ponder 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .face-bubble,
+  .face-ponder,
   .face-swap,
   .face-breathe,
   .face-twinkle,
   .face-hop,
-  .face-scan,
   .pop-in,
   .sun-pulse,
   .letter-bounce,

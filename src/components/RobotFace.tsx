@@ -94,17 +94,57 @@ function Expression({ mood }: { mood: Mood }) {
       );
 
     case "illustrating":
-      // Pupils dart side to side; concentrating, tongue poking out
+      // Thinking hard about your comic: big eyes gazing up at a thought bubble,
+      // blushing, tongue poking out, sparkles twinkling.
       return (
         <g>
-          <circle cx={LEFT} cy={EYE_Y} r="11" fill="none" stroke="currentColor" strokeWidth="3" />
-          <circle cx={RIGHT} cy={EYE_Y} r="11" fill="none" stroke="currentColor" strokeWidth="3" />
-          <g className="face-scan">
-            <circle fill="currentColor" cx={LEFT} cy={EYE_Y} r="5" />
-            <circle fill="currentColor" cx={RIGHT} cy={EYE_Y} r="5" />
+          <Sparkle x={22} y={20} size={5} delay={0} />
+          <Sparkle x={34} y={72} size={3.5} delay={0.7} />
+          <Sparkle x={140} y={70} size={4} delay={1.3} />
+
+          {/* Thought bubbles pop up one by one toward a little cloud */}
+          <circle className="face-bubble fill-orange-200" style={delay(0)} cx="122" cy="24" r="2" />
+          <circle
+            className="face-bubble fill-orange-200"
+            style={delay(0.3)}
+            cx="128"
+            cy="17"
+            r="3"
+          />
+          <g className="face-bubble" style={delay(0.6)}>
+            <path
+              className="fill-orange-100 stroke-orange-300"
+              strokeWidth="1.2"
+              d="M134 13 a5 5 0 0 1 4 -7 a6 6 0 0 1 10 -2 a5 5 0 0 1 8 4 a4.5 4.5 0 0 1 -1 9 h-17 a4.5 4.5 0 0 1 -4 -4 z"
+            />
+            <path
+              className="face-twinkle fill-accent"
+              d="M145.5 5 l1.3 2.8 3 .3 -2.3 2 .7 3 -2.7 -1.6 -2.7 1.6 .7 -3 -2.3 -2 3 -.3 z"
+            />
           </g>
-          <path {...line} strokeWidth={3.5} d={`M70 ${MOUTH_Y} Q80 ${MOUTH_Y - 3} 91 ${MOUTH_Y}`} />
-          <ellipse className="fill-orange-400" cx="88" cy={MOUTH_Y + 3} rx="4" ry="3" />
+
+          {/* Big shiny eyes; pupils drift up toward the bubble as it thinks */}
+          <g className="robot-blink">
+            {[LEFT, RIGHT].map((cx) => (
+              <g key={cx}>
+                <circle fill="currentColor" cx={cx} cy={EYE_Y} r="11" />
+                <g className="face-ponder">
+                  <circle fill="#ffffff" cx={cx + 3.5} cy={EYE_Y - 4.5} r="3.8" />
+                  <circle fill="#ffffff" cx={cx - 3} cy={EYE_Y + 3.5} r="1.6" />
+                </g>
+              </g>
+            ))}
+          </g>
+
+          <Cheeks />
+
+          {/* Tiny "hmm" mouth with the tongue poking out the side */}
+          <path
+            {...line}
+            strokeWidth={3}
+            d={`M73 ${MOUTH_Y} Q77 ${MOUTH_Y - 3} 81 ${MOUTH_Y} Q85 ${MOUTH_Y + 3} 88 ${MOUTH_Y}`}
+          />
+          <path className="fill-pink-400" d={`M84 ${MOUTH_Y + 1.5} q0 5 3.5 5 q3.5 0 3 -5 z`} />
         </g>
       );
 
@@ -157,3 +197,19 @@ function Cheeks() {
     </g>
   );
 }
+
+/** A four-point twinkle. */
+function Sparkle({ x, y, size, delay: d }: { x: number; y: number; size: number; delay: number }) {
+  // Position on the wrapper: the twinkle animation overrides transform on the path.
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <path
+        className="face-twinkle fill-amber-300"
+        style={delay(d)}
+        d={`M0 ${-size} Q0 0 ${size} 0 Q0 0 0 ${size} Q0 0 ${-size} 0 Q0 0 0 ${-size} Z`}
+      />
+    </g>
+  );
+}
+
+const delay = (seconds: number) => ({ "--delay": `${seconds}s` }) as React.CSSProperties;
