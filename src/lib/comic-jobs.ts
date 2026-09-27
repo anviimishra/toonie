@@ -8,16 +8,19 @@ const bucket = "comic-drafts";
 export async function createComicJob(userId: string, input: ComicRequest, duration: number | null) {
   const db = supabaseServer();
   const id = randomUUID();
-  const { error } = await db
-    .from("comic_jobs")
-    .insert({
-      id,
-      user_id: userId,
-      status: "working",
-      stage: "Preparing your story…",
-      panel_count: input.panelCount,
-      audio_duration_ms: duration,
-    });
+  const { error } = await db.from("comic_jobs").insert({
+    id,
+    user_id: userId,
+    status: "working",
+    stage: "Preparing your story…",
+    panel_count:
+      input.outputMode === "dual"
+        ? 6 + Math.max(3, input.panelCount)
+        : input.outputMode === "reading"
+          ? 6
+          : input.panelCount,
+    audio_duration_ms: duration,
+  });
   if (error?.code === "23505")
     throw new ApiError(
       409,
@@ -49,6 +52,7 @@ export async function runComicJob(id: string, userId: string, input: ComicReques
   let updates = Promise.resolve(),
     drawn = 0;
   const paths: string[] = [];
+  const stickerPaths: string[] = [];
   async function update(
     values: import("@/lib/supabase/messages.types").MessagingTables["comic_jobs"]["Update"],
   ) {
@@ -67,13 +71,13 @@ export async function runComicJob(id: string, userId: string, input: ComicReques
           await update({ original_transcript: event.transcript, stage: "Writing your comic…" });
         if (event.type === "scripted") await update({ stage: "Drawing your panels…" });
         if (event.type === "panel") {
-          const path = `${userId}/${id}/panel-${event.index}.jpg`;
+          const path = `${userId}/${id}/${event.edition ?? "panel"}-${event.index}.jpg`;
           const bytes = Buffer.from(event.imageUrl.split(",")[1], "base64");
           const { error } = await db.storage
             .from(bucket)
             .upload(path, bytes, { contentType: "image/jpeg", upsert: false });
           if (error) throw error;
-          paths[event.index] = path;
+          (event.edition === "sticker" ? stickerPaths : paths)[event.index] = path;
           await update({ drawn: ++drawn, stage: "Drawing your panels…" });
         }
         if (event.type === "error")
@@ -85,6 +89,10 @@ export async function runComicJob(id: string, userId: string, input: ComicReques
         if (event.type === "done") {
           const comic: Comic = {
             ...event.comic,
+            stickerPanels: event.comic.stickerPanels?.map((panel, index) => ({
+              ...panel,
+              imageUrl: stickerPaths[index],
+            })),
             panels: event.comic.panels.map((panel, index) => ({
               ...panel,
               imageUrl: paths[index],
@@ -145,6 +153,14 @@ export async function currentComicJob(userId: string) {
   const rendered = comic
     ? {
         ...comic,
+        stickerPanels: comic.stickerPanels
+          ? await Promise.all(
+              comic.stickerPanels.map(async (panel) => ({
+                ...panel,
+                imageUrl: await signed(panel.imageUrl!),
+              })),
+            )
+          : undefined,
         panels: await Promise.all(
           comic.panels.map(async (panel) => ({
             ...panel,

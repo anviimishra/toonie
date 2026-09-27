@@ -14,7 +14,17 @@ export const titledScriptSchema = z.object({
    * every image prompt so the same people appear in every panel.
    */
   cast: z.string().min(1).max(400),
-  panels: z.array(panelSchema).min(PANEL_COUNT_MIN).max(PANEL_COUNT_MAX),
+  panels: z
+    .array(
+      panelSchema.extend({
+        dialogue: z
+          .array(z.object({ speaker: z.string().min(1).max(40), text: z.string().min(1).max(120) }))
+          .max(2)
+          .optional(),
+      }),
+    )
+    .min(PANEL_COUNT_MIN)
+    .max(PANEL_COUNT_MAX),
 });
 
 export type TitledScript = z.infer<typeof titledScriptSchema>;
@@ -22,12 +32,14 @@ export type TitledScript = z.infer<typeof titledScriptSchema>;
 export type ComicPanelResult = {
   scene: string;
   caption: string;
+  dialogue?: { speaker: string; text: string }[];
   /** Missing when that one panel failed to draw. */
   imageUrl?: string;
 };
 
 export type Comic = {
-  readingVersion?: 1;
+  readingVersion?: 1 | 2;
+  stickerPanels?: ComicPanelResult[];
   format?: "sticker";
   title: string;
   transcript: string;
@@ -40,8 +52,13 @@ export type Comic = {
  */
 export type ComicEvent =
   | { type: "transcribed"; transcript: string }
-  | { type: "scripted"; title: string; panels: { scene: string; caption: string }[] }
-  | { type: "panel"; index: number; imageUrl: string }
-  | { type: "panel_failed"; index: number; message: string }
+  | {
+      type: "scripted";
+      edition?: "reading" | "sticker";
+      title: string;
+      panels: { scene: string; caption: string }[];
+    }
+  | { type: "panel"; edition?: "reading" | "sticker"; index: number; imageUrl: string }
+  | { type: "panel_failed"; edition?: "reading" | "sticker"; index: number; message: string }
   | { type: "done"; comic: Comic }
   | { type: "error"; message: string };

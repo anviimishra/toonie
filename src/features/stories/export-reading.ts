@@ -20,14 +20,21 @@ export async function renderReadingComic(panels: ComicPanelResult[]): Promise<Bl
   const rows = panels.map((panel, index) => {
     const lines: string[] = [];
     let line = "";
-    for (const word of panel.caption.split(/\s+/)) {
-      const next = line ? `${line} ${word}` : word;
-      if (ctx.measureText(next).width > 1056 && line) {
-        lines.push(line);
-        line = word;
-      } else line = next;
+    const paragraphs = [
+      panel.caption,
+      ...(panel.dialogue ?? []).map((quote) => `${quote.speaker}: \u201c${quote.text}\u201d`),
+    ];
+    for (const paragraph of paragraphs) {
+      for (const word of paragraph.split(/\s+/)) {
+        const next = line ? `${line} ${word}` : word;
+        if (ctx.measureText(next).width > 1056 && line) {
+          lines.push(line);
+          line = word;
+        } else line = next;
+      }
+      if (line) lines.push(line);
+      line = "";
     }
-    if (line) lines.push(line);
     const image = images[index];
     const imageHeight = Math.round((1104 * image.naturalHeight) / image.naturalWidth);
     return { lines, imageHeight, height: imageHeight + lines.length * 76 + 96 };

@@ -62,8 +62,15 @@ try {
     }
   }
   assert.ok(ready, "Job did not complete");
-  assert.equal(ready.comic.readingVersion, 1);
-  assert.equal(ready.comic.panels.length, panelCount);
+  assert.equal(ready.comic.readingVersion, 2);
+  assert.equal(ready.comic.panels.length, 6);
+  assert.equal(ready.comic.stickerPanels.length, Math.max(3, panelCount));
+  assert.equal(ready.panel_count, 6 + Math.max(3, panelCount));
+  assert.ok(ready.comic.panels.some((panel) => panel.dialogue?.length));
+  for (const panel of ready.comic.stickerPanels) {
+    assert.equal(panel.caption, "");
+    assert.equal((await fetch(panel.imageUrl)).status, 200);
+  }
   for (const panel of ready.comic.panels) {
     assert.ok(panel.caption.trim());
     assert.equal((await fetch(panel.imageUrl)).status, 200);

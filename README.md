@@ -5,7 +5,7 @@ Record or type a story, preview a Grok-generated comic starring your saved avata
 ## Demo setup
 
 1. Install dependencies, copy `.env.example` to `.env.local`, and fill in the Supabase and xAI keys. Keep secret keys server-only.
-2. Apply migrations in filename order. Existing installations with the two message migrations applied need `supabase/migrations/20260927063038_pairing_and_delivery.sql`, followed by `20260927071932_restore_auth_profiles.sql` to restore the table expected by the signup trigger. Then apply `20260927080245_comic_jobs_and_thumbnails.sql` for saved generation and separate thumbnails.
+2. Apply migrations in filename order. Existing installations with the two message migrations applied need `supabase/migrations/20260927063038_pairing_and_delivery.sql`, followed by `20260927071932_restore_auth_profiles.sql` to restore the table expected by the signup trigger. Then apply `20260927080245_comic_jobs_and_thumbnails.sql` for saved generation and separate thumbnails, then `20260927083604_separate_reading_and_sticker.sql` for six-panel reading comics and jobs containing both editions.
 3. Enable Email/password and Anonymous Sign-Ins in Supabase Authentication. If email confirmation is enabled, confirm the signup email before signing in. Configure Supabase's Site URL and allowed redirect URLs for your deployed origin and `http://localhost:3000/login`.
 4. Run `npm run dev` and open http://localhost:3000/start.
 5. Choose Parent, create an account/sign in, and save your own avatar and the child's avatar in Me. In Settings, enter the child's name and generate a five-digit code.
@@ -17,7 +17,7 @@ The database stores the generated title, required transcript, optional original 
 
 ## Comics and printing
 
-New comics have two renditions: a full-size portrait reading comic with a caption for each panel, and a wordless square sticker/thumbnail. Parent stories use 1–4 panels (3 by default); child replies default to four reading panels and do not offer a print download. The words are rendered by the app for reliable legibility, not painted into the illustrations by the image model. The shared prompt is in `src/lib/ai/prompts.ts`. The saved avatar reference is supplied for every image. AI output can vary, so both sides preview before sending.
+Parent stories generate two independently scripted and illustrated comics: a six-panel reading comic with captions and dialogue, and a wordless 3-4-panel sticker summary (3 by default). The sticker supplies the color feed thumbnail and black-and-white print file. Opening the thumbnail shows the full reading comic. Child replies generate only the six-panel reading comic, with its first panel as the thumbnail and no print file. Words are rendered by the app for reliable legibility. The shared prompts are in `src/lib/ai/prompts.ts`, and the saved avatar reference is supplied for every image. Both sides preview before sending.
 
 Black-and-white print PNGs are 1200×1200 masters. A lifted-midtones ordered halftone retains detail in dark skin and clothing instead of turning all dark colors solid black; the color artwork keeps the original skin tone. HelloBlink printer transport, native resolution, and physical output still need hardware testing; the app does not send directly to the printer.
 
@@ -46,4 +46,6 @@ The browser posts to `/api/comics?background=1` and receives HTTP 202 after the 
 
 The host must support Next.js `after()` and the configured 300-second function duration (Vercel or a persistent Next server). This is not an external retry queue: server termination or timeout is reported as an interrupted job after six minutes, and the user can retry. Unsent drafts and archived job media currently require administrative retention/cleanup. Existing sent comics keep their original rendition; generate a new comic to get captions and the new print conversion.
 
-`node --env-file=.env.local scripts/smoke-background.mjs` tests real Grok background generation with a synthetic avatar and temporary user, then cleans up. It consumes provider credits; `SMOKE_PANELS=1` limits it to one image.
+`node --env-file=.env.local scripts/smoke-background.mjs` tests real Grok background generation with a synthetic avatar and temporary user, then cleans up. It consumes provider credits: six reading images plus three sticker images by default. `SMOKE_PANELS=4` selects a four-panel sticker.
+
+For demos, disabling **Confirm email** in Supabase Authentication > Providers > Email lets email/password signups receive a session immediately without confirmation emails. App pairing and generation rate limits remain independent.

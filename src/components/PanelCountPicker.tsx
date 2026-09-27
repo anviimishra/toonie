@@ -1,17 +1,12 @@
 "use client";
 
-import { PANEL_COUNT_MAX, PANEL_COUNT_MIN } from "@/features/stories";
-
 type Props = {
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
 };
 
-const COUNTS = Array.from(
-  { length: PANEL_COUNT_MAX - PANEL_COUNT_MIN + 1 },
-  (_, index) => PANEL_COUNT_MIN + index,
-);
+const COUNTS = [3, 4];
 
 /**
  * How many panels the comic should have: raised chips, one tap each, all four
@@ -26,7 +21,7 @@ export function PanelCountPicker({ value, onChange, disabled = false }: Props) {
           {value} panel{value === 1 ? "" : "s"}
         </span>
       </legend>
-      <div role="radiogroup" aria-label="Panel count" className="grid grid-cols-4 gap-2">
+      <div role="radiogroup" aria-label="Panel count" className="grid grid-cols-2 gap-2">
         {COUNTS.map((count) => {
           const selected = count === value;
           return (
@@ -38,7 +33,7 @@ export function PanelCountPicker({ value, onChange, disabled = false }: Props) {
               aria-label={`${count} panel${count === 1 ? "" : "s"}`}
               onClick={() => onChange(count)}
               className={[
-                "aspect-square rounded-2xl text-lg font-black transition-all duration-150",
+                "h-14 rounded-2xl text-lg font-black transition-all duration-150",
                 "focus-visible:ring-4 focus-visible:ring-orange-300/60 focus-visible:outline-none",
                 "disabled:opacity-40",
                 selected

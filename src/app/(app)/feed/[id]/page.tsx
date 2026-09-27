@@ -135,7 +135,7 @@ export default function ComicPage() {
                 onLoad={() => {
                   if (item.status === "new") void feed.markSeen(item.id).catch(() => {});
                 }}
-                className="aspect-square w-full object-contain"
+                className="h-auto w-full"
               />
             ) : item.format === "sticker" ? (
               <StickerComic panels={item.panels} title={item.title} />

@@ -102,7 +102,7 @@ export default function RecordPage() {
         setSource(savedSource);
         setText(job.comic!.transcript);
         setMode(savedSource.audio ? "talk" : "type");
-        setPanelCount(job.panel_count);
+        setPanelCount(job.comic!.stickerPanels?.length ?? Math.min(4, job.comic!.panels.length));
         preparedStory.current = existing?.id === job.id ? existing.submission : undefined;
         await saveDraft({
           id: job.id,
@@ -135,7 +135,9 @@ export default function RecordPage() {
           preparedStory.current = draft.submission;
           setText(draft.comic.transcript);
           setMode(draft.source?.audio ? "talk" : "type");
-          setPanelCount(Math.min(4, draft.comic.panels.length));
+          setPanelCount(
+            draft.comic.stickerPanels?.length ?? Math.min(4, draft.comic.panels.length),
+          );
         }
       })
       .catch(() => {
@@ -159,7 +161,7 @@ export default function RecordPage() {
     setDownloading(true);
     setProblem(null);
     try {
-      await downloadSticker(comic.panels, comic.title, true);
+      await downloadSticker(comic.stickerPanels ?? comic.panels, comic.title, true);
     } catch {
       setProblem("Couldn't download the sticker. Please try again.");
     } finally {
@@ -304,7 +306,11 @@ export default function RecordPage() {
                   <ComicPanel key={index} {...panel} number={index + 1} />
                 ))
               ) : (
-                <StickerComic panels={comic.panels} title={comic.title} monochrome={printPreview} />
+                <StickerComic
+                  panels={comic.stickerPanels ?? comic.panels}
+                  title={comic.title}
+                  monochrome={printPreview}
+                />
               )}
               <label className="flex items-center justify-center gap-2 text-sm font-bold">
                 <input
@@ -315,7 +321,8 @@ export default function RecordPage() {
                 Black-and-white print preview
               </label>
               <p className="text-center text-sm text-stone-600">
-                One 2″ × 2″ sticker · {comic.panels.length} panels · no printed words
+                One 2″ × 2″ sticker · {(comic.stickerPanels ?? comic.panels).length} panels · no
+                printed words
               </p>
             </>
           ) : (

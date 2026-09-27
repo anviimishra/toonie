@@ -38,11 +38,16 @@ it("exports a tall reading comic with wrapped, readable captions", async () => {
     "I found a tiny rock at the park and named it Kevin. Then I took Kevin home to show my family.";
   const blob = await renderReadingComic([
     { scene: "A rock", caption, imageUrl: "data:image/png;base64,YQ==" },
-    { scene: "Home", caption: "Welcome home, Kevin!", imageUrl: "data:image/png;base64,YQ==" },
+    {
+      scene: "Home",
+      caption: "Welcome home, Kevin!",
+      dialogue: [{ speaker: "Me", text: "Hello!" }],
+      imageUrl: "data:image/png;base64,YQ==",
+    },
   ]);
   expect(blob.type).toBe("image/png");
   expect(canvas.height).toBeGreaterThan(canvas.width * 2);
-  expect(words.join(" ")).toBe(`${caption} Welcome home, Kevin!`);
+  expect(words.join(" ")).toBe(`${caption} Welcome home, Kevin! Me: \u201cHello!\u201d`);
   expect(words.every((line) => line.length * 28 <= 1056)).toBe(true);
   expect(context.drawImage).toHaveBeenCalledTimes(2);
 });

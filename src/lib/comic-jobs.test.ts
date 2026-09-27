@@ -68,3 +68,21 @@ it("never publishes ready when private image storage fails", async () => {
   expect(mocks.updates.some((value) => value.status === "ready")).toBe(false);
   expect(mocks.updates.at(-1)).toMatchObject({ status: "failed" });
 });
+
+it("keeps reading and sticker images separate even when their panel indices match", async () => {
+  mocks.upload.mockResolvedValue({ error: null });
+  mocks.make.mockImplementation(async (_input, emit) => {
+    const panel = { scene: "Rock", caption: "Hi", imageUrl: "data:image/jpeg;base64,YQ==" };
+    emit({ type: "panel", edition: "reading", index: 0, imageUrl: panel.imageUrl });
+    emit({ type: "panel", edition: "sticker", index: 0, imageUrl: panel.imageUrl });
+    emit({ type: "done", comic: { panels: [panel], stickerPanels: [panel], readingVersion: 2 } });
+  });
+  await runComicJob("job", "owner", { ...request, outputMode: "dual" });
+  expect(mocks.updates.at(-1)).toMatchObject({
+    status: "ready",
+    result: {
+      panels: [{ imageUrl: "owner/job/reading-0.jpg" }],
+      stickerPanels: [{ imageUrl: "owner/job/sticker-0.jpg" }],
+    },
+  });
+});

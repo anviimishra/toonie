@@ -4,6 +4,7 @@ type Props = {
   /** What happens in the panel. Drives the stand-in art and its accessible name. */
   scene: string;
   caption?: string;
+  dialogue?: { speaker: string; text: string }[];
   /** A real drawn image. When present it replaces the stand-in art. */
   imageUrl?: string;
   /** 1-based, shown as a little number tab on full-size panels. */
@@ -29,6 +30,7 @@ const HALFTONE = {
 export function ComicPanel({
   scene,
   caption,
+  dialogue,
   imageUrl,
   number,
   compact = false,
@@ -73,9 +75,14 @@ export function ComicPanel({
         )}
       </div>
 
-      {!compact && caption && (
+      {!compact && (caption || dialogue?.length) && (
         <figcaption className="border-t-[3px] border-stone-900 bg-amber-50 px-4 py-3 text-[1.05rem] leading-snug font-extrabold text-stone-900">
-          {caption}
+          {caption && <p>{caption}</p>}
+          {dialogue?.map((quote, index) => (
+            <p key={index} className="mt-2 rounded-lg border-2 border-stone-900 bg-white px-3 py-2">
+              <strong>{quote.speaker}:</strong> &ldquo;{quote.text}&rdquo;
+            </p>
+          ))}
         </figcaption>
       )}
     </figure>
