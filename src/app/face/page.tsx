@@ -5,6 +5,8 @@ import { RobotFace, type Mood } from "@/components/RobotFace";
 import { ChildConnection } from "@/components/ChildConnection";
 import { Button } from "@/components/Button";
 import { ComicPanel } from "@/components/feed/ComicPanel";
+import { StickerComic } from "@/components/feed/StickerComic";
+import { ReadAloud } from "@/components/ReadAloud";
 import { useRecorder } from "@/hooks/useRecorder";
 import { checkDraft } from "@/features/stories";
 import { useComicJob, jobSource } from "@/features/stories/useComicJob";
@@ -231,16 +233,22 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
           }}
           onError={() => setProblem("The comic couldn't load. Go back and reopen it to retry.")}
         />
+        {opened.direction === "received" && <ReadAloud messageId={opened.id} />}
         {opened.audioUrl && (
-          <audio
-            controls
-            src={opened.audioUrl}
-            aria-label="Listen to the story"
-            className="w-full"
-          />
+          <details>
+            <summary>
+              {opened.direction === "received" ? "Hear the original recording" : "Your recording"}
+            </summary>
+            <audio
+              controls
+              src={opened.audioUrl}
+              aria-label="The original recording"
+              className="mt-2 w-full"
+            />
+          </details>
         )}
         <details>
-          <summary>Story</summary>
+          <summary>Original story</summary>
           <p className="mt-2 whitespace-pre-wrap">{opened.transcript}</p>
         </details>
         {alert}
@@ -288,6 +296,16 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
       >
         <RobotFace mood={mood} className="h-full w-full" />
       </button>
+      {/* Whose tablet this is: the name the grown-up gave when connecting it. */}
+      <p className="pointer-events-none absolute top-[max(env(safe-area-inset-top),1rem)] left-4 flex items-center gap-2 rounded-full bg-white/80 py-1.5 pr-4 pl-1.5 text-sm font-black text-stone-700 shadow-sm ring-1 ring-orange-100 backdrop-blur">
+        <span
+          aria-hidden="true"
+          className="grid size-7 place-items-center rounded-full bg-accent text-xs text-white"
+        >
+          {pair.child_name.charAt(0).toUpperCase()}
+        </span>
+        {pair.child_name}
+      </p>
       <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto max-w-md px-4 text-center">
         <p role="status" className="mb-3 font-bold">
           {activity === "illustrating"

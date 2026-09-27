@@ -19,6 +19,7 @@ import { useComicJob, jobSource } from "@/features/stories/useComicJob";
 import { deliverStory, getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 import { avatars } from "@/features/avatar";
+import { parentLanguage } from "@/features/family/client";
 import { avatarReference, describeAvatar } from "@/features/avatar/reference";
 import { StickerComic } from "@/components/feed/StickerComic";
 import { StoryAudio } from "@/components/StoryAudio";
@@ -195,6 +196,8 @@ export default function RecordPage() {
       }
       const form = new FormData();
       form.set("panelCount", String(panelCount));
+      // Transcribe in the language set in Settings (no translation).
+      form.set("language", await parentLanguage());
       form.set("reference", await avatarReference(avatar));
       // Photo references determine identity; default preset config must not override them.
       form.set(

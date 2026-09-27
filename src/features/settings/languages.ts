@@ -2,6 +2,8 @@
  * Languages a family can pick to send stories in and receive comics in.
  * Codes are ISO 639-1. Saved as preferences only for now: stories are
  * transcribed in English and nothing is translated yet.
+ *
+ * Keep in step with the check on family_members.language (a test enforces it).
  */
 export const LANGUAGES = [
   { code: "en", label: "English" },

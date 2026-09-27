@@ -29,6 +29,16 @@ describe("transcribe", () => {
     expect((form.get("file") as File).name).toBe("story.webm");
   });
 
+  it("sends the chosen language, English by default", async () => {
+    const fetchImpl = vi.fn(async () => okResponse({ text: "Hola" }));
+    await transcribe(new Blob(["x"]), { apiKey: "k", language: "es", fetchImpl });
+    await transcribe(new Blob(["x"]), { apiKey: "k", fetchImpl });
+    const sent = fetchImpl.mock.calls.map((call) =>
+      ((call as unknown as [string, RequestInit])[1].body as FormData).get("language"),
+    );
+    expect(sent).toEqual(["es", "en"]);
+  });
+
   it("throws with the status when xAI refuses", async () => {
     const fetchImpl = vi.fn(async () => new Response("bad key", { status: 401 }));
     await expect(transcribe(new Blob(["x"]), { apiKey: "nope", fetchImpl })).rejects.toThrow(

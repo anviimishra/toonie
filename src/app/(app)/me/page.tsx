@@ -2,22 +2,35 @@
 
 import { PairingSettings } from "@/components/me/PairingSettings";
 import Link from "next/link";
+import { Button } from "@/components/Button";
 import { useEffect, useId, useState } from "react";
 import { ChevronRightIcon, FaceIcon, LanguageIcon } from "@/components/icons";
 import { AccountCard } from "@/components/me/AccountCard";
 import { AvatarPortrait } from "@/components/me/AvatarFace";
 import { type Avatar, avatars, childAvatars } from "@/features/avatar";
+import { backfillAvatar, loadAvatar } from "@/features/family/avatars";
 import {
+  getFamily,
+  setVoiceConsent,
+  updateFamilyMember,
+  uploadAvatar,
+} from "@/features/family/client";
+import { getPairs } from "@/features/messages/client";
+import {
+  DEFAULT_LANGUAGE,
   DEFAULT_SETTINGS,
   LANGUAGES,
+  isLanguage,
   type LanguageCode,
   type Settings,
   settings as settingsStore,
 } from "@/features/settings";
+import type { ParentChildPair } from "@/lib/supabase/types";
 
 /**
- * Settings: both avatars (yours and your child's), your default languages,
- * and who is signed in.
+ * Settings: both avatars (yours and your child's), both languages, the
+ * connected child tablet, and who is signed in. Anything the other tablet needs
+ * is saved to Supabase once a child device is connected.
  *
  * The header stays put; everything under it scrolls, and the tab bar from the
  * layout stays pinned below.
@@ -28,13 +41,31 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([avatars.get().catch(() => null), childAvatars.get().catch(() => null)]).then(
-      ([me, kid]) => {
-        if (!active) return;
-        setMine(me);
-        setChild(kid);
-      },
-    );
+    (async () => {
+      // Shared copies from Supabase, for each connected child tablet.
+      const pairs = await getPairs().catch(() => [] as ParentChildPair[]);
+      const families = await Promise.all(pairs.map((p) => getFamily(p.id).catch(() => null)));
+      const first = families[0] ?? null;
+
+      // Show this tablet's avatars, or fill them in from Supabase.
+      const [me, kid] = await Promise.all([
+        loadAvatar(avatars, async () => first?.parent ?? null),
+        loadAvatar(childAvatars, async () => first?.child ?? null),
+      ]);
+      if (!active) return;
+      setMine(me);
+      setChild(kid);
+
+      // Upload any avatar made here before pairing, so the other tablet gets it.
+      await Promise.all(
+        pairs.flatMap((pair, i) => [
+          backfillAvatar(me, families[i]?.parent ?? null, (a) =>
+            uploadAvatar(pair.id, "parent", a),
+          ),
+          backfillAvatar(kid, families[i]?.child ?? null, (a) => uploadAvatar(pair.id, "child", a)),
+        ]),
+      ).catch((error) => console.warn("[settings] couldn't upload an avatar", error));
+    })();
     return () => {
       active = false;
     };
@@ -67,6 +98,10 @@ export default function SettingsPage() {
 
         <Section title="Language">
           <LanguageSettings />
+        </Section>
+
+        <Section title="Read-aloud voice">
+          <VoiceSettings />
         </Section>
 
         <PairingSettings />
@@ -128,34 +163,74 @@ function AvatarRow({
 }
 
 /**
- * Default languages for sending stories and receiving comics. Saves on change.
- * Preferences only for now: stories are transcribed in English and nothing is
- * translated yet.
+ * The grown-up's and the child's languages. Once a child tablet is connected
+ * they're saved to Supabase (family_members) so both tablets agree; before
+ * that they're kept on this tablet. Preferences only for now: stories are
+ * transcribed in English and nothing is translated yet.
  */
 function LanguageSettings() {
-  const [value, setValue] = useState<Settings>(DEFAULT_SETTINGS);
+  const [pairs, setPairs] = useState<ParentChildPair[] | null>(null);
+  const [parentLanguage, setParentLanguage] = useState<LanguageCode>(DEFAULT_LANGUAGE);
+  const [childLanguages, setChildLanguages] = useState<Record<string, LanguageCode>>({});
+  const [local, setLocal] = useState<Settings>(DEFAULT_SETTINGS);
   const [status, setStatus] = useState<"loading" | "idle" | "saved" | "error">("loading");
 
   useEffect(() => {
     let active = true;
-    settingsStore.get().then((found) => {
+    (async () => {
+      const [found, saved] = await Promise.all([
+        getPairs().catch(() => [] as ParentChildPair[]),
+        settingsStore.get(),
+      ]);
+      const families = await Promise.all(found.map((p) => getFamily(p.id).catch(() => null)));
       if (!active) return;
-      setValue(found);
+      setLocal(saved);
+      setPairs(found);
+      const asCode = (value: string | undefined, fallback: LanguageCode) =>
+        isLanguage(value) ? value : fallback;
+      setParentLanguage(asCode(families[0]?.parent?.language, saved.parentLanguage));
+      setChildLanguages(
+        Object.fromEntries(
+          found.map((p, i) => [p.id, asCode(families[i]?.child?.language, saved.childLanguage)]),
+        ),
+      );
       setStatus("idle");
-    });
+    })();
     return () => {
       active = false;
     };
   }, []);
 
-  async function change(patch: Partial<Settings>) {
-    const next = { ...value, ...patch };
-    setValue(next);
+  async function save(task: () => Promise<unknown>) {
     try {
-      await settingsStore.save(next);
+      await task();
       setStatus("saved");
     } catch {
       setStatus("error");
+    }
+  }
+
+  const connected = (pairs?.length ?? 0) > 0;
+  const loading = status === "loading";
+
+  function changeParent(code: LanguageCode) {
+    setParentLanguage(code);
+    void save(async () => {
+      await settingsStore.save({ ...local, parentLanguage: code });
+      setLocal((l) => ({ ...l, parentLanguage: code }));
+      await Promise.all(
+        (pairs ?? []).map((p) => updateFamilyMember(p.id, "parent", { language: code })),
+      );
+    });
+  }
+
+  function changeChild(pairId: string | null, code: LanguageCode) {
+    if (pairId) {
+      setChildLanguages((all) => ({ ...all, [pairId]: code }));
+      void save(() => updateFamilyMember(pairId, "child", { language: code }));
+    } else {
+      setLocal((l) => ({ ...l, childLanguage: code }));
+      void save(() => settingsStore.save({ ...local, childLanguage: code }));
     }
   }
 
@@ -166,23 +241,37 @@ function LanguageSettings() {
           <LanguageIcon className="size-6" />
         </span>
         <p className="pt-1 text-sm font-bold text-stone-500">
-          Pick the language you tell stories in, and the one you want comics to arrive in.
+          {connected
+            ? "Shared with the connected tablet, so you each see your own language."
+            : "Saved on this tablet. Connect a child device below to share them."}
         </p>
       </div>
 
       <div className="mt-4 space-y-3">
         <LanguageSelect
-          label="I send stories in"
-          value={value.sendLanguage}
-          disabled={status === "loading"}
-          onChange={(sendLanguage) => change({ sendLanguage })}
+          label="Your language"
+          value={parentLanguage}
+          disabled={loading}
+          onChange={changeParent}
         />
-        <LanguageSelect
-          label="I receive comics in"
-          value={value.receiveLanguage}
-          disabled={status === "loading"}
-          onChange={(receiveLanguage) => change({ receiveLanguage })}
-        />
+        {connected ? (
+          pairs!.map((pair) => (
+            <LanguageSelect
+              key={pair.id}
+              label={`${pair.child_name}'s language`}
+              value={childLanguages[pair.id] ?? DEFAULT_LANGUAGE}
+              disabled={loading}
+              onChange={(code) => changeChild(pair.id, code)}
+            />
+          ))
+        ) : (
+          <LanguageSelect
+            label="Child's language"
+            value={local.childLanguage}
+            disabled={loading}
+            onChange={(code) => changeChild(null, code)}
+          />
+        )}
       </div>
 
       <p aria-live="polite" className="mt-3 h-5 text-center text-sm font-extrabold">
@@ -225,6 +314,101 @@ function LanguageSelect({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+/**
+ * The parent's opt-in for read-alouds in their own voice. Stories they send
+ * are translated into the child's language and, only if this is on, spoken in
+ * a copy of their voice made from their story recordings. Off by default;
+ * turning it off deletes the copy and everything spoken with it.
+ */
+function VoiceSettings() {
+  const [state, setState] = useState<"loading" | "unpaired" | "off" | "on">("loading");
+  const [agreed, setAgreed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const [pair] = await getPairs().catch(() => [] as ParentChildPair[]);
+      if (!pair) return active && setState("unpaired");
+      const family = await getFamily(pair.id).catch(() => null);
+      if (active) setState(family?.parent?.voice_consent_at ? "on" : "off");
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function change(consent: boolean) {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await setVoiceConsent(consent);
+      setState(consent ? "on" : "off");
+      setAgreed(false);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "That didn't save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state === "loading") return <div className="h-24 p-4" aria-busy="true" />;
+
+  return (
+    <div className="space-y-3 p-4 text-sm font-bold text-stone-600">
+      <p>
+        Your stories are translated into your child&apos;s language and read aloud on their tablet.
+        If you turn this on, they&apos;re read in{" "}
+        <span className="text-stone-800">your own voice</span>: Toonie makes a copy of your voice
+        with ElevenLabs from your story recordings.
+      </p>
+
+      {state === "unpaired" && <p>Connect a child device below to use this.</p>}
+
+      {state === "on" && (
+        <>
+          <p className="text-orange-600">On: stories are read in your voice.</p>
+          <Button
+            variant="secondary"
+            className="w-full"
+            disabled={busy}
+            onClick={() => change(false)}
+          >
+            {busy ? "Turning off…" : "Turn off and delete my voice copy"}
+          </Button>
+        </>
+      )}
+
+      {state === "off" && (
+        <>
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-1 size-5 accent-orange-500"
+            />
+            <span>
+              This is my voice, and I agree to Toonie making a copy of it to read my stories to my
+              child. I can turn this off at any time, which deletes the copy.
+            </span>
+          </label>
+          <Button className="w-full" disabled={!agreed || busy} onClick={() => change(true)}>
+            {busy ? "Turning on…" : "Read my stories in my voice"}
+          </Button>
+        </>
+      )}
+
+      {problem && (
+        <p role="alert" className="text-red-600">
+          {problem}
+        </p>
+      )}
     </div>
   );
 }

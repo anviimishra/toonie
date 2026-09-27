@@ -40,6 +40,33 @@ export type ComicMessageInsert = Pick<
     >
   >;
 
+/** One person's settings within a pair: see migrations/*_family_members.sql. */
+export type FamilyMember = {
+  pair_id: string;
+  role: MessageSenderRole;
+  /** ISO 639-1 code from LANGUAGES. */
+  language: string;
+  /** Inline image used as the comic character reference, or null. */
+  avatar_reference: string | null;
+  /** The avatar builder recipe, for re-editing on another device. */
+  avatar_config: Record<string, unknown> | null;
+  /** Parent only: when they agreed to have their voice cloned for read-alouds. */
+  voice_consent_at: string | null;
+  /** Parent only: the provider's id for their cloned voice. Server-managed. */
+  voice_id: string | null;
+  updated_at: string;
+};
+
+/** A story translated and spoken for the recipient; see *_voiceovers.sql. */
+export type MessageVoiceover = {
+  message_id: string;
+  language: string;
+  text: string;
+  /** In the private message-media bucket. */
+  audio_path: string;
+  created_at: string;
+};
+
 type ServerTable<T> = { Row: T; Insert: T; Update: Partial<T>; Relationships: [] };
 export type MessagingTables = {
   comic_jobs: {
@@ -79,6 +106,35 @@ export type MessagingTables = {
     claimed_child_id: string | null;
     pair_id: string | null;
   }>;
+  family_members: {
+    Row: FamilyMember;
+    Insert: Pick<FamilyMember, "pair_id" | "role"> &
+      Partial<Omit<FamilyMember, "pair_id" | "role">>;
+    Update: Partial<FamilyMember>;
+    Relationships: [
+      {
+        foreignKeyName: "family_members_pair_id_fkey";
+        columns: ["pair_id"];
+        isOneToOne: false;
+        referencedRelation: "parent_child_pairs";
+        referencedColumns: ["id"];
+      },
+    ];
+  };
+  message_voiceovers: {
+    Row: MessageVoiceover;
+    Insert: Omit<MessageVoiceover, "created_at"> & { created_at?: string };
+    Update: Partial<MessageVoiceover>;
+    Relationships: [
+      {
+        foreignKeyName: "message_voiceovers_message_id_fkey";
+        columns: ["message_id"];
+        isOneToOne: false;
+        referencedRelation: "comic_messages";
+        referencedColumns: ["id"];
+      },
+    ];
+  };
   request_limits: ServerTable<{ key: string; started_at: string; attempts: number }>;
   parent_child_pairs: {
     Row: ParentChildPair;

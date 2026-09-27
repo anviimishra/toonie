@@ -3,6 +3,7 @@ import { limitRequest } from "@/lib/pairing";
 import { stickerPanelCountSchema } from "@/features/stories/sticker";
 import { referenceSchema } from "@/lib/ai/reference";
 import { z } from "zod";
+import { isLanguage, type LanguageCode } from "@/features/settings/languages";
 import { MAX_STORY_CHARS } from "@/lib/ai/prompts";
 import { makeComic, type ComicRequest } from "@/lib/ai/pipeline";
 import { type ComicEvent } from "@/types";
@@ -17,6 +18,7 @@ import { createComicJob, runComicJob } from "@/lib/comic-jobs";
  *   text        the typed story (type mode)
  *   narrator    optional: what the teller looks like, from their avatar
  *   reference   required: inline PNG/JPEG/WebP of the saved avatar
+ *   language    optional: ISO 639-1 code the story is spoken in (default en)
  *
  * Responds with NDJSON: one ComicEvent per line as each step finishes, so the
  * screen can show the words, then the captions, then each picture arriving.
@@ -35,6 +37,8 @@ const fieldsSchema = z.object({
     .max(MAX_STORY_CHARS)
     .optional(),
   narrator: z.string().max(300).optional(),
+  // The storyteller's language from Settings; transcription only, no translation.
+  language: z.custom<LanguageCode>(isLanguage, "Unknown language.").optional(),
 });
 function problem(status: number, message: string): Response {
   return Response.json({ error: { code: "invalid_request", message } }, { status });
@@ -66,9 +70,21 @@ export async function POST(request: Request): Promise<Response> {
       const pairId = z.string().uuid().safeParse(form.get("pairId"));
       if (!pairId.success) throw new ApiError(400, "Connect your child device first.");
       const pair = await requirePair(identity.db, pairId.data, identity.user);
-      if (pair.child_id !== identity.user.id || !pair.child_avatar_reference)
+      // The parent sets the child's avatar from their own tablet (family_members);
+      // pairs made before that table carry it on the pair itself.
+      const { data: member, error: memberError } = await identity.db
+        .from("family_members")
+        .select("avatar_reference, language")
+        .eq("pair_id", pair.id)
+        .eq("role", "child")
+        .maybeSingle();
+      if (memberError) throw memberError;
+      const reference = member?.avatar_reference ?? pair.child_avatar_reference;
+      if (pair.child_id !== identity.user.id || !reference)
         throw new ApiError(403, "Ask your parent to sync your avatar in Settings.");
-      form.set("reference", pair.child_avatar_reference);
+      form.set("reference", reference);
+      // The child's language is set by the parent; ignore anything the device sends.
+      form.set("language", isLanguage(member?.language) ? member.language : "en");
       form.set(
         "narrator",
         "The narrator is the exact child character in the supplied reference image.",
@@ -79,11 +95,13 @@ export async function POST(request: Request): Promise<Response> {
   }
   const text = form.get("text");
   const narrator = form.get("narrator");
+  const language = form.get("language");
   const fields = fieldsSchema.safeParse({
     reference: form.get("reference"),
     panelCount: form.get("panelCount"),
     text: typeof text === "string" && text.trim() ? text : undefined,
     narrator: typeof narrator === "string" && narrator.trim() ? narrator : undefined,
+    language: typeof language === "string" && language ? language : undefined,
   });
   if (!fields.success) {
     return problem(400, fields.error.issues[0]?.message ?? "Invalid request.");
@@ -96,6 +114,7 @@ export async function POST(request: Request): Promise<Response> {
       kind: "audio",
       audio,
       filename: `story.${extensionFor(audio.type)}`,
+      language: fields.data.language,
       panelCount: fields.data.panelCount,
       narrator: fields.data.narrator,
       reference: fields.data.reference,
