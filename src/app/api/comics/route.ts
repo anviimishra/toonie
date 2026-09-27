@@ -130,7 +130,8 @@ export async function POST(request: Request): Promise<Response> {
   } else {
     return problem(400, "Send either a recording or some text.");
   }
-  comicRequest.outputMode = identity.user.is_anonymous ? "reading" : "dual";
+  // Sticker only for now: the separate reading comic took too long to script for a demo.
+  comicRequest.outputMode = undefined;
   if (new URL(request.url).searchParams.get("background") === "1") {
     try {
       const rawDuration = Number(form.get("durationMs"));

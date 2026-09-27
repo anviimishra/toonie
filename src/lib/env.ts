@@ -18,7 +18,8 @@ const serverSchema = publicSchema.extend({
   // xAI covers the whole pipeline: transcription, the panel script, and the
   // panel images. One key, one bill.
   XAI_API_KEY: z.string().min(1),
-  XAI_TEXT_MODEL: z.string().default("grok-4.7"),
+  // Non-reasoning: writes a script in seconds; grok-4.7 took 45-100s.
+  XAI_TEXT_MODEL: z.string().default("grok-4.20-0309-non-reasoning"),
   XAI_IMAGE_MODEL: z.string().default("grok-imagine-image-2.0"),
   XAI_TRANSCRIBE_MODEL: z.string().default("grok-voice-transcribe-2.0"),
   // Read-alouds for the child: Gemini translates, ElevenLabs speaks in the
