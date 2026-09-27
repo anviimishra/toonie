@@ -1,11 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fff7ed;
+  --background: #f9f0ff;
   --foreground: #1c1917;
-  --accent: #f97316;
+  --accent: #af41fb;
   --accent-foreground: #ffffff;
   --muted: #78716c;
+}
+
+/* Purple theme, built around #AF41FB (brand 500). The app's classes say
+   orange/amber/rose from when the theme was orange; these remap those scales
+   so every one renders in the purple family without touching each component.
+   amber -> a slightly bluer purple, rose -> a slightly pinker purple. */
+@theme {
+  --color-orange-50: #f9f0ff;
+  --color-orange-100: #f2e0ff;
+  --color-orange-200: #e6c2fe;
+  --color-orange-300: #d59bfd;
+  --color-orange-400: #c26efc;
+  --color-orange-500: #af41fb;
+  --color-orange-600: #9623e7;
+  --color-orange-700: #7f1fc1;
+  --color-orange-800: #671d9a;
+  --color-orange-900: #53197b;
+  --color-orange-950: #380a57;
+
+  --color-amber-50: #f5f0ff;
+  --color-amber-100: #eae0ff;
+  --color-amber-200: #d6c2fe;
+  --color-amber-300: #bb9bfd;
+  --color-amber-400: #9c6efc;
+  --color-amber-500: #7d41fb;
+  --color-amber-600: #6223e7;
+  --color-amber-700: #531fc1;
+  --color-amber-800: #461d9a;
+  --color-amber-900: #39197b;
+  --color-amber-950: #230a57;
+
+  --color-rose-50: #fdf0ff;
+  --color-rose-100: #fce0ff;
+  --color-rose-200: #f8c2fe;
+  --color-rose-300: #f29bfd;
+  --color-rose-400: #ed6efc;
+  --color-rose-500: #e741fb;
+  --color-rose-600: #d123e7;
+  --color-rose-700: #af1fc1;
+  --color-rose-800: #8d1d9a;
+  --color-rose-900: #70197b;
+  --color-rose-950: #4f0a57;
 }
 
 @theme inline {
@@ -19,12 +61,12 @@
   /* Raised surfaces: a soft coloured drop shadow plus a top highlight, so
      buttons read as physical objects rather than flat stickers. */
   --shadow-raised:
-    0 10px 24px -8px rgb(234 88 12 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.35),
-    inset 0 -3px 6px rgb(154 52 18 / 0.25);
+    0 10px 24px -8px rgb(150 35 231 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -3px 6px rgb(103 29 154 / 0.25);
   --shadow-raised-pressed:
-    0 4px 10px -4px rgb(234 88 12 / 0.5), inset 0 2px 4px rgb(154 52 18 / 0.3);
-  --shadow-card: 0 20px 40px -20px rgb(120 53 15 / 0.35), 0 2px 6px rgb(120 53 15 / 0.06);
-  --shadow-chip: 0 3px 0 rgb(231 229 228), 0 6px 12px -6px rgb(120 53 15 / 0.2);
+    0 4px 10px -4px rgb(150 35 231 / 0.5), inset 0 2px 4px rgb(103 29 154 / 0.3);
+  --shadow-card: 0 20px 40px -20px rgb(83 25 123 / 0.35), 0 2px 6px rgb(83 25 123 / 0.06);
+  --shadow-chip: 0 3px 0 rgb(231 229 228), 0 6px 12px -6px rgb(83 25 123 / 0.2);
 
   --animate-breathe: breathe 3.2s ease-in-out infinite;
   --animate-float: float 7s ease-in-out infinite;
@@ -119,7 +161,7 @@ body {
     fill: var(--accent);
   }
   50% {
-    fill: #fdba74;
+    fill: #d59bfd;
   }
 }
 
@@ -229,8 +271,8 @@ body {
 /* Chunky "sticker" outline on white text. */
 .sticker-text {
   text-shadow:
-    0 4px 0 #c2410c,
-    0 8px 18px rgba(124, 45, 18, 0.35);
+    0 4px 0 #7f1fc1,
+    0 8px 18px rgba(83, 25, 123, 0.35);
 }
 
 @keyframes tap-pulse {

@@ -68,7 +68,7 @@ function SignedInCard({ user, onContinue }: { user: AuthUser; onContinue: () => 
     >
       <span
         aria-hidden="true"
-        className="mx-auto grid size-14 place-items-center rounded-full bg-linear-to-b from-amber-200 to-orange-300 text-2xl font-black text-orange-900 shadow-[0_4px_10px_-2px_rgb(154_52_18/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-2 ring-white"
+        className="mx-auto grid size-14 place-items-center rounded-full bg-linear-to-b from-amber-200 to-orange-300 text-2xl font-black text-orange-900 shadow-[0_4px_10px_-2px_rgb(103_29_154/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-2 ring-white"
       >
         {initial}
       </span>

@@ -186,7 +186,7 @@ export function PhotoAvatarMaker({ initial, isSaved, onSave, onTweak, saving }: 
         )}
 
         <p className="flex items-start gap-2 text-xs leading-snug font-bold text-stone-500">
-          <ShieldIcon className="mt-px size-4 shrink-0 text-emerald-500" />
+          <ShieldIcon className="mt-px size-4 shrink-0 text-orange-500" />
           Your photo is only used to draw your avatar.
         </p>
       </div>

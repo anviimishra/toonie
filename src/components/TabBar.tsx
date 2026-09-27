@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
-import { ComicsIcon, FaceIcon, MicIcon } from "@/components/icons";
+import { ComicsIcon, GearIcon, MicIcon } from "@/components/icons";
 
 type Tab = {
   href: string;
@@ -14,7 +14,7 @@ type Tab = {
 const TABS: Tab[] = [
   { href: "/", label: "Record", Icon: MicIcon },
   { href: "/feed", label: "Feed", Icon: ComicsIcon },
-  { href: "/me", label: "Me", Icon: FaceIcon },
+  { href: "/me", label: "Settings", Icon: GearIcon },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -51,7 +51,7 @@ export function TabBar() {
                 <span
                   className={[
                     "grid h-8 w-14 place-items-center rounded-full transition-all duration-200",
-                    active ? "bg-orange-100 shadow-[inset_0_1px_2px_rgb(154_52_18/0.12)]" : "",
+                    active ? "bg-orange-100 shadow-[inset_0_1px_2px_rgb(103_29_154/0.12)]" : "",
                   ].join(" ")}
                 >
                   <Icon className="size-[22px]" />

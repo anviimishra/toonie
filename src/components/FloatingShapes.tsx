@@ -26,8 +26,8 @@ const SHAPES: Shape[] = [
 ];
 
 const COLORS: Record<Tone, string[]> = {
-  light: ["#ffffff", "#fff7ed", "#fde68a"],
-  warm: ["#f97316", "#fdba74", "#facc15"],
+  light: ["#ffffff", "#f9f0ff", "#d6c2fe"],
+  warm: ["#af41fb", "#d59bfd", "#ed6efc"],
 };
 
 /** Stars, hearts, and bubbles drifting in the background. Purely decorative. */

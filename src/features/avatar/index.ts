@@ -1,4 +1,4 @@
-import { createStubAvatars } from "./stub";
+import { CHILD_AVATAR_KEY, createStubAvatars } from "./stub";
 import type { AvatarAdapter } from "./types";
 
 export type { Avatar, AvatarAdapter, AvatarConfig, AvatarSource } from "./types";
@@ -32,3 +32,6 @@ export { MAX_PHOTO_BYTES, checkPhoto } from "./photo";
  * model are ready; no component imports the stub directly.
  */
 export const avatars: AvatarAdapter = createStubAvatars();
+
+/** The child's avatar: the co-star of the comics. Stored separately. */
+export const childAvatars: AvatarAdapter = createStubAvatars(CHILD_AVATAR_KEY);

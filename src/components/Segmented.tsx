@@ -29,12 +29,12 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
     <div
       role="tablist"
       aria-label={label}
-      className="relative grid rounded-full bg-orange-100/80 p-1 shadow-[inset_0_2px_4px_rgb(154_52_18/0.15)]"
+      className="relative grid rounded-full bg-orange-100/80 p-1 shadow-[inset_0_2px_4px_rgb(103_29_154/0.15)]"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       <span
         aria-hidden="true"
-        className="absolute inset-y-1 left-1 rounded-full bg-white shadow-[0_2px_6px_rgb(120_53_15/0.18)] transition-transform duration-200 ease-out"
+        className="absolute inset-y-1 left-1 rounded-full bg-white shadow-[0_2px_6px_rgb(83_25_123/0.18)] transition-transform duration-200 ease-out"
         style={{
           width: `calc((100% - 0.5rem) / ${options.length})`,
           transform: `translateX(${index * 100}%)`,

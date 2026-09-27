@@ -147,12 +147,12 @@ export function AvatarBuilder({ config, onChange, onSave, saving, saved }: Props
           preview, so the button and the look are always in reach. */}
       <div className="sticky bottom-0 z-10 mt-2 px-3 pt-4 pb-3">
         <div className="flex items-center gap-3 rounded-[28px] bg-white/95 p-2.5 pl-3 shadow-card ring-1 ring-orange-100/70 backdrop-blur">
-          <span className="rounded-full shadow-[0_4px_10px_-2px_rgb(154_52_18/0.35)] ring-2 ring-white">
+          <span className="rounded-full shadow-[0_4px_10px_-2px_rgb(103_29_154/0.35)] ring-2 ring-white">
             <AvatarFace config={config} size="sm" />
           </span>
           <p aria-live="polite" className="min-w-0 flex-1 text-sm font-extrabold text-stone-600">
             {saved ? (
-              <span className="inline-flex items-center gap-1 text-emerald-600">
+              <span className="inline-flex items-center gap-1 text-orange-600">
                 <CheckIcon className="size-4" strokeWidth={3} />
                 Saved
               </span>

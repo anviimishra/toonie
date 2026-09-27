@@ -38,9 +38,9 @@ export function TextField({ label, error, hint, revealable = false, type, ref, .
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={[
-            "w-full rounded-2xl bg-orange-50/70 px-4 py-3 text-base font-semibold text-stone-800",
-            "shadow-[inset_0_2px_5px_rgb(120_53_15/0.14),0_1px_0_rgb(255_255_255)] ring-1 transition-shadow",
-            "placeholder:font-medium placeholder:text-stone-400",
+            "w-full rounded-2xl bg-orange-50/70 px-4 py-3 text-base font-bold text-stone-800",
+            "shadow-[inset_0_2px_5px_rgb(83_25_123/0.14),0_1px_0_rgb(255_255_255)] ring-1 transition-shadow",
+            "placeholder:font-bold placeholder:text-stone-400",
             "focus:bg-white focus:ring-4 focus:outline-none",
             error
               ? "ring-red-300 focus:ring-red-300/60"

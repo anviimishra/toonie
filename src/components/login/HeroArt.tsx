@@ -42,7 +42,7 @@ export function HeroArt({ className = "" }: { className?: string }) {
       viewBox="0 0 260 180"
       aria-hidden="true"
       focusable="false"
-      className={["drop-shadow-[0_14px_18px_rgb(120_53_15/0.22)]", className].join(" ")}
+      className={["drop-shadow-[0_14px_18px_rgb(83_25_123/0.22)]", className].join(" ")}
     >
       <style>{MOTION}</style>
       <defs>
@@ -54,12 +54,12 @@ export function HeroArt({ className = "" }: { className?: string }) {
           y2="70"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0" stopColor="#fb923c" />
-          <stop offset="1" stopColor="#ea580c" />
+          <stop offset="0" stopColor="#c26efc" />
+          <stop offset="1" stopColor="#9623e7" />
         </linearGradient>
         <linearGradient id="toonie-buddy" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fdba74" />
-          <stop offset="1" stopColor="#f97316" />
+          <stop offset="0" stopColor="#d59bfd" />
+          <stop offset="1" stopColor="#af41fb" />
         </linearGradient>
         <clipPath id="toonie-front">
           <rect x="80" y="34" width="100" height="128" rx="10" />
@@ -67,7 +67,7 @@ export function HeroArt({ className = "" }: { className?: string }) {
       </defs>
 
       {/* Soft contact shadow so the stack sits on something. */}
-      <ellipse cx="130" cy="171" rx="72" ry="6" fill="rgb(120 53 15 / 0.12)" />
+      <ellipse cx="130" cy="171" rx="72" ry="6" fill="rgb(83 25 123 / 0.12)" />
 
       {/* Back panels, fanned out behind. */}
       <g transform="rotate(-15 130 165)">
@@ -99,7 +99,7 @@ export function HeroArt({ className = "" }: { className?: string }) {
 
       {/* Front panel: a sunny little scene with our round buddy. */}
       <g clipPath="url(#toonie-front)">
-        <rect x="80" y="34" width="100" height="128" fill="#ffedd5" />
+        <rect x="80" y="34" width="100" height="128" fill="#f2e0ff" />
         <circle cx="103" cy="60" r="11" fill="#fcd34d" />
         <g fill="#fff">
           <circle cx="134" cy="62" r="6" />
@@ -107,7 +107,7 @@ export function HeroArt({ className = "" }: { className?: string }) {
           <circle cx="152" cy="62" r="6" />
           <rect x="134" y="60" width="18" height="8" rx="4" />
         </g>
-        <path d="M78 136Q130 108 182 136V164H78z" fill="#fde68a" />
+        <path d="M78 136Q130 108 182 136V164H78z" fill="#d6c2fe" />
         <circle cx="138" cy="116" r="17" fill="url(#toonie-buddy)" stroke={INK} strokeWidth="3" />
         <circle cx="132.5" cy="112" r="2.4" fill={INK} />
         <circle cx="143.5" cy="112" r="2.4" fill={INK} />

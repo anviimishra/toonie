@@ -16,7 +16,7 @@ export function SenderAvatar({
       aria-hidden="true"
       className={[
         "grid shrink-0 place-items-center rounded-full font-black text-stone-900/80 ring-2 ring-white",
-        "shadow-[0_4px_10px_-2px_rgb(120_53_15/0.35),inset_0_1px_0_rgb(255_255_255/0.6)]",
+        "shadow-[0_4px_10px_-2px_rgb(83_25_123/0.35),inset_0_1px_0_rgb(255_255_255/0.6)]",
         className,
       ].join(" ")}
       style={{

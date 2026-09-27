@@ -28,7 +28,7 @@ export function AccountCard({ avatar }: { avatar: Avatar | null }) {
       className="mx-3 flex items-center gap-3 rounded-[28px] bg-white/90 p-3 pl-4 shadow-card ring-1 ring-orange-100/70 backdrop-blur"
     >
       {avatar ? (
-        <span className="rounded-full shadow-[0_4px_10px_-2px_rgb(154_52_18/0.35)] ring-2 ring-white">
+        <span className="rounded-full shadow-[0_4px_10px_-2px_rgb(103_29_154/0.35)] ring-2 ring-white">
           <AvatarPortrait avatar={avatar} size="sm" />
         </span>
       ) : (

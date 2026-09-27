@@ -132,7 +132,7 @@ export default function ComicPage() {
                 imageUrl={panel.imageUrl}
               />
             ))}
-            <p className="pb-1 text-center text-xs font-black tracking-[0.3em] text-stone-400 uppercase">
+            <p className="pb-1 text-center text-xs font-black tracking-[0.2em] text-stone-400 uppercase">
               The end
             </p>
           </article>

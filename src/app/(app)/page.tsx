@@ -100,7 +100,7 @@ export default function RecordPage() {
         </div>
         <span
           aria-label={user ? `Signed in as ${user.displayName}` : "Not signed in"}
-          className="grid size-11 place-items-center rounded-full bg-linear-to-b from-amber-200 to-orange-300 text-lg font-black text-orange-900 shadow-[0_4px_10px_-2px_rgb(154_52_18/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-2 ring-white"
+          className="grid size-11 place-items-center rounded-full bg-linear-to-b from-amber-200 to-orange-300 text-lg font-black text-orange-900 shadow-[0_4px_10px_-2px_rgb(103_29_154/0.35),inset_0_1px_0_rgb(255_255_255/0.6)] ring-2 ring-white"
         >
           {initial ?? <FaceIcon className="size-6" />}
         </span>
@@ -146,7 +146,7 @@ export default function RecordPage() {
                 setProblem(null);
               }}
               placeholder="Today I found a very round rock and named it Kevin…"
-              className="h-full w-full resize-none rounded-3xl bg-white/90 p-5 text-lg leading-relaxed shadow-[inset_0_2px_6px_rgb(120_53_15/0.12),0_1px_0_rgb(255_255_255)] ring-1 ring-orange-100 placeholder:text-stone-400 focus:ring-4 focus:ring-orange-300/50 focus:outline-none"
+              className="h-full w-full resize-none rounded-3xl bg-white/90 p-5 text-lg leading-relaxed shadow-[inset_0_2px_6px_rgb(83_25_123/0.12),0_1px_0_rgb(255_255_255)] ring-1 ring-orange-100 placeholder:text-stone-400 focus:ring-4 focus:ring-orange-300/50 focus:outline-none"
             />
           </label>
         )}
