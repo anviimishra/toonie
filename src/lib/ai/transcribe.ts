@@ -17,7 +17,13 @@ export type Transcript = {
 
 export async function transcribe(
   audio: Blob,
-  options: { apiKey?: string; model?: string; fetchImpl?: typeof fetch } = {},
+  options: {
+    apiKey?: string;
+    model?: string;
+    /** ISO 639-1 code of the spoken language. Defaults to English. */
+    language?: string;
+    fetchImpl?: typeof fetch;
+  } = {},
 ): Promise<Transcript> {
   const env = options.apiKey ? null : aiEnv();
   const apiKey = options.apiKey ?? env!.XAI_API_KEY;
@@ -26,7 +32,7 @@ export async function transcribe(
 
   const form = new FormData();
   form.append("model", model);
-  form.append("language", "en");
+  form.append("language", options.language ?? "en");
   form.append("format", "true"); // punctuation and capitals
   // xAI requires the file to be the last field.
   form.append("file", audio, `story.${extensionFor(audio.type)}`);

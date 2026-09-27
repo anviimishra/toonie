@@ -95,6 +95,8 @@ export type ComicRequest =
       kind: "audio";
       audio: Blob;
       filename: string;
+      /** The storyteller's language (ISO 639-1), so it's transcribed as spoken. */
+      language?: string;
       panelCount: number;
       narrator?: string;
       reference: string;
@@ -120,7 +122,9 @@ export async function makeComic(
 ): Promise<void> {
   try {
     const transcript =
-      request.kind === "audio" ? (await transcribe(request.audio)).text : request.text.trim();
+      request.kind === "audio"
+        ? (await transcribe(request.audio, { language: request.language })).text
+        : request.text.trim();
     if (transcript.length < 3) {
       emit({ type: "error", message: "We couldn't hear a story in that. Try again a bit louder?" });
       return;

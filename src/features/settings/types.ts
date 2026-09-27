@@ -1,16 +1,18 @@
 import type { LanguageCode } from "./languages";
 
-/** A family's preferences. Avatars live in features/avatar. */
+/**
+ * Languages chosen on this tablet before a child device is connected. Once
+ * connected, the shared copy lives in Supabase (family_members) instead.
+ */
 export type Settings = {
-  /** The language stories are told in. */
-  sendLanguage: LanguageCode;
-  /** The language comics should arrive in. */
-  receiveLanguage: LanguageCode;
+  /** The grown-up's language. */
+  parentLanguage: LanguageCode;
+  /** The child's language. */
+  childLanguage: LanguageCode;
 };
 
 /**
- * The seam between the Settings screen and wherever settings live.
- * Swap the stub for Supabase without touching a component.
+ * The seam between the Settings screen and wherever local settings live.
  */
 export interface SettingsAdapter {
   get(): Promise<Settings>;
