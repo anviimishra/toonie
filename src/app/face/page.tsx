@@ -128,7 +128,7 @@ function ConnectedFace({
     if (!job) return;
     if (job.status === "working") {
       setActivity("illustrating");
-      setStage(job.stage + " " + job.drawn + "/" + job.panel_count + " panels finished");
+      setStage(`${job.stage} ${job.drawn}/${job.panel_count} panels`);
       return;
     }
     if (job.status === "failed") {
@@ -198,6 +198,16 @@ function ConnectedFace({
       void recorder.start();
     } else if (mood === "listening" && recorder.state === "recording") recorder.stop();
   }
+  const status =
+    activity === "illustrating"
+      ? stage
+      : activity === "sent"
+        ? "Sent to your grown-up!"
+        : mood === "mail"
+          ? "New comic! Tap to open."
+          : mood === "listening"
+            ? "Listening… tap to stop."
+            : "";
   const alert =
     problem || generation.error ? (
       <p role="alert" className="rounded-lg bg-white p-3 text-red-700">
@@ -345,35 +355,38 @@ function ConnectedFace({
       >
         <LogoutIcon className="size-5" />
       </button>
-      <div className="pointer-events-none absolute inset-x-0 bottom-5 mx-auto max-w-md px-4 text-center">
-        <p role="status" className="mb-3 font-bold">
-          {activity === "illustrating"
-            ? `${stage}. You can browse your comics or leave and come back.`
-            : activity === "sent"
-              ? "Sent to your grown-up!"
-              : mood === "mail"
-                ? "You have a new comic. Tap to open."
-                : mood === "listening"
-                  ? "Listening… tap to stop."
-                  : "Tap to tell your grown-up a story."}
-        </p>
-        <div className="pointer-events-auto">
-          {alert}
-          <button
-            disabled={activity === "listening"}
-            onClick={() => {
-              void refresh();
-              setHistory(true);
-            }}
-            className="rounded-full bg-white px-5 py-2 font-bold"
-          >
-            Your comics
-          </button>
-          <Link href="/start" className="ml-4 text-sm underline">
-            Home
-          </Link>
+      {/* The face fills a landscape screen, so text sits in the empty strip
+          above the eyes and buttons in the bottom corners, clear of the mouth.
+          Asleep, the Zs say enough on their own. */}
+      {(status || alert) && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(env(safe-area-inset-top),1rem)] mx-auto flex max-w-[40%] flex-col items-center gap-2 text-center">
+          {status && (
+            <p
+              role="status"
+              className="rounded-full bg-white/85 px-4 py-1.5 text-sm font-bold shadow-sm ring-1 ring-orange-100 backdrop-blur"
+            >
+              {status}
+            </p>
+          )}
+          <div className="pointer-events-auto text-sm">{alert}</div>
         </div>
-      </div>
+      )}
+      <button
+        disabled={activity === "listening"}
+        onClick={() => {
+          void refresh();
+          setHistory(true);
+        }}
+        className="absolute bottom-[max(env(safe-area-inset-bottom),1rem)] left-4 rounded-full bg-white px-5 py-2 font-bold shadow-sm ring-1 ring-orange-100"
+      >
+        Your comics
+      </button>
+      <Link
+        href="/start"
+        className="absolute right-4 bottom-[max(env(safe-area-inset-bottom),1rem)] rounded-full px-3 py-2 text-sm text-stone-500 underline"
+      >
+        Home
+      </Link>
     </main>
   );
 }
