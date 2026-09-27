@@ -309,7 +309,7 @@ export default function RecordPage() {
           <p className="mt-2 whitespace-pre-wrap">{comic.transcript}</p>
         </details>
         {problem && (
-          <p role="alert" className="mb-3 text-red-700">
+          <p role="alert" className="mb-3 text-red-600">
             {problem}
           </p>
         )}
