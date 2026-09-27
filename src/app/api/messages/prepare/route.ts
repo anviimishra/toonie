@@ -26,15 +26,19 @@ export async function POST(request: Request) {
         throw new ApiError(409, "That message ID is already used. Create a new comic.");
       return Response.json({ sent: true, id: input.id });
     }
-    const uploads = await Promise.all(
+    const candidates = await Promise.all(
       deliveryFiles(input).map(async (file) => {
         const { data, error } = await db.storage
           .from(BUCKET_MESSAGE_MEDIA)
           .createSignedUploadUrl(file.path, { upsert: false });
+        // A previous attempt may have uploaded this object before losing its response.
+        // Never overwrite it: the send endpoint verifies its exact bytes before publishing.
+        if (error && /already exists|duplicate|resource already/i.test(error.message)) return null;
         if (error) throw error;
         return { key: file.key, path: file.path, token: data.token };
       }),
     );
+    const uploads = candidates.filter((upload) => upload !== null);
     return Response.json(
       { sent: false, ticket: signDelivery(input, user.id), uploads },
       { headers: { "Cache-Control": "no-store" } },
