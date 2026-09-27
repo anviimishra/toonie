@@ -4,7 +4,9 @@ import { referenceSchema } from "@/lib/ai/reference";
 export async function GET(request: Request) {
   try {
     const { client } = await requireUser(request);
-    const { data, error } = await client.from("parent_child_pairs").select("*").order("created_at");
+    const { data, error } = await client.from("parent_child_pairs").select("*")
+      // Newest first: one child per parent, and a new code reuses the newest pair.
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return Response.json({ pairs: data }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

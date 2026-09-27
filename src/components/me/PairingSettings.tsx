@@ -7,7 +7,8 @@ import { apiJson, jsonBody } from "@/lib/api-client";
 import { getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 export function PairingSettings() {
-  const [pairs, setPairs] = useState<ParentChildPair[]>([]),
+  // One child per parent: a new code moves the connection to the new device.
+  const [pair, setPair] = useState<ParentChildPair | null>(null),
     [name, setName] = useState("Child"),
     [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null),
     [problem, setProblem] = useState(""),
@@ -18,7 +19,7 @@ export function PairingSettings() {
     const refresh = () =>
       getPairs()
         .then((p) => {
-          if (active) setPairs(p);
+          if (active) setPair(p[0] ?? null);
         })
         .catch((e) => {
           if (active) setProblem(e.message);
@@ -64,10 +65,13 @@ export function PairingSettings() {
   }
   return (
     <section className="rounded-2xl bg-white p-5" aria-label="Connect child device">
-      <h2 className="text-xl font-black">Connect a child device</h2>
+      <h2 className="text-xl font-black">
+        {pair ? "Your child's device" : "Connect a child device"}
+      </h2>
       <p className="mt-2 text-sm text-stone-600">
-        Save the child&apos;s avatar above, then make a code. On the other device, choose “I&apos;m
-        the kid” and enter it.
+        {pair
+          ? "Lost the connection or switching tablets? Make a new code and enter it on the child's device. Your comics stay, and the old device is disconnected."
+          : "Save the child's avatar above, then make a code. On the other device, choose “I'm the kid” and enter it."}
       </p>
       <label className="mt-4 block text-sm font-bold">
         Child&apos;s name
@@ -79,7 +83,7 @@ export function PairingSettings() {
         />
       </label>
       <Button onClick={createCode} disabled={busy || !name.trim()} className="mt-3 w-full">
-        {busy ? "Working…" : "Generate five-digit code"}
+        {busy ? "Working…" : pair ? "Get a code to reconnect" : "Generate five-digit code"}
       </Button>
       {code && (
         <div className="mt-4 text-center" role="status">
@@ -93,21 +97,17 @@ export function PairingSettings() {
           </p>
         </div>
       )}
-      {pairs.length > 0 && (
-        <ul className="mt-5 divide-y divide-stone-200">
-          {pairs.map((p) => (
-            <li key={p.id} className="py-3">
-              <p className="font-bold">{p.child_name} · Connected</p>
-              <button
-                disabled={busy}
-                onClick={() => syncAvatar(p.id)}
-                className="mt-1 text-sm underline"
-              >
-                Sync current child avatar
-              </button>
-            </li>
-          ))}
-        </ul>
+      {pair && (
+        <div className="mt-5 border-t border-stone-200 pt-3">
+          <p className="font-bold">{pair.child_name} · Connected</p>
+          <button
+            disabled={busy}
+            onClick={() => syncAvatar(pair.id)}
+            className="mt-1 text-sm underline"
+          >
+            Sync current child avatar
+          </button>
+        </div>
       )}
       {notice && (
         <p role="status" className="mt-3 text-sm">

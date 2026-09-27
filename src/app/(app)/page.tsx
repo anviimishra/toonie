@@ -362,28 +362,14 @@ export default function RecordPage() {
           </Link>
         )}
         {pairs.length ? (
-          <label className="mb-4 block font-bold">
-            Send to
-            <select
-              value={pairId}
-              disabled={saving}
-              onChange={(e) => setPairId(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-stone-300 p-3"
-            >
-              {pairs.map((pair) => (
-                <option key={pair.id} value={pair.id}>
-                  {pair.child_name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className="mb-4 font-bold">Send to {pairs[0].child_name}</p>
         ) : (
           <Link href="/me" className="mb-4 block font-bold underline">
             Connect a child in Settings
           </Link>
         )}
         <Button onClick={approve} disabled={saving || !pairId} className="w-full">
-          {saving ? "Saving…" : "Send to child"}
+          {saving ? "Saving…" : `Send to ${pairs[0]?.child_name ?? "child"}`}
         </Button>
         <button onClick={send} disabled={saving} className="mt-4 w-full py-3 font-bold">
           Draw again

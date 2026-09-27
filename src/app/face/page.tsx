@@ -21,6 +21,7 @@ export default function Face() {
 }
 function ConnectedFace({ pair }: { pair: ParentChildPair }) {
   const recorder = useRecorder();
+  const resetRecorder = recorder.reset;
   const generation = useComicJob(true);
   const { start: startJob, dismiss: dismissJob, job: pendingJob } = generation;
   const restoredJob = useRef<string | null>(null);
@@ -128,25 +129,32 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
       return;
     }
     if (!job.comic || restoredJob.current === job.id) return;
+    // Claim the job before any await so a re-render can't send it twice.
+    restoredJob.current = job.id;
     setActivity("illustrating");
-    setStage("Preparing your reading preview…");
-    let valid = true;
-    void jobSource(job)
-      .then(async (source) => {
-        const prepared = await prepareStory(job.id, job.comic!, source, renderSticker);
-        if (valid) {
-          restoredJob.current = job.id;
-          setActivity("idle");
-          setPreview({ comic: job.comic!, prepared });
-        }
-      })
-      .catch((e) => {
-        if (valid) setProblem(e.message);
-      });
-    return () => {
-      valid = false;
-    };
-  }, [generation.job]);
+    setStage("Sending your comic to your grown-up…");
+    const comic = job.comic;
+    // Replies go straight to the parent feed once drawn; the preview screen
+    // only appears if sending fails, so the child can retry.
+    void (async () => {
+      let prepared: PreparedStory | null = null;
+      try {
+        prepared = await prepareStory(job.id, comic, await jobSource(job), renderSticker);
+        await deliverStory(prepared, pair.id, true);
+        await dismissJob();
+        resetRecorder();
+        if (!mounted.current) return;
+        setActivity("sent");
+        void refresh();
+      } catch (e) {
+        if (!mounted.current) return;
+        setActivity("idle");
+        if (prepared) setPreview({ comic, prepared });
+        else restoredJob.current = null;
+        setProblem(e instanceof Error ? e.message : "Couldn't send. Try again.");
+      }
+    })();
+  }, [generation.job, pair.id, dismissJob, resetRecorder, refresh]);
   async function sendReply() {
     if (!preview || sendLock.current) return;
     sendLock.current = true;
@@ -265,12 +273,22 @@ function ConnectedFace({ pair }: { pair: ParentChildPair }) {
           <button
             key={m.id}
             onClick={() => setOpened(m)}
-            className="block w-full rounded-xl border border-stone-200 p-4 text-left"
+            className="flex w-full items-center gap-4 rounded-xl border border-stone-200 p-3 text-left"
           >
-            <span className="font-bold">{m.title}</span>
-            <span className="block text-sm">
-              {m.direction === "sent" ? "You sent this" : "From your grown-up"}
-              {m.status === "new" ? " · New" : ""}
+            {(m.thumbnailUrl ?? m.imageUrl) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={m.thumbnailUrl ?? m.imageUrl}
+                alt=""
+                className="size-20 shrink-0 rounded-lg border border-stone-200 object-cover"
+              />
+            )}
+            <span className="min-w-0">
+              <span className="block font-bold">{m.title}</span>
+              <span className="block text-sm">
+                {m.direction === "sent" ? "You sent this" : "From your grown-up"}
+                {m.status === "new" ? " · New" : ""}
+              </span>
             </span>
           </button>
         ))}
