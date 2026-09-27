@@ -25,7 +25,10 @@ const script = {
   panels: [{ scene: "Narrator finds a rock", caption: "I found Kevin." }],
 };
 
-beforeEach(() => vi.mocked(xaiPost).mockReset());
+beforeEach(() => {
+  vi.mocked(xaiPost).mockReset();
+  vi.mocked(transcribe).mockClear();
+});
 describe("comic pipeline", () => {
   it("sends the saved avatar as an image reference and emits a complete comic", async () => {
     vi.mocked(xaiPost)
@@ -69,6 +72,7 @@ describe("comic pipeline", () => {
     vi.mocked(xaiPost)
       .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify(script) } }] })
       .mockResolvedValueOnce({ data: [{ b64_json: "YQ==" }] });
+    const events: ComicEvent[] = [];
     await makeComic(
       {
         kind: "audio",
@@ -77,8 +81,24 @@ describe("comic pipeline", () => {
         panelCount: 1,
         reference,
       },
-      () => {},
+      (event) => events.push(event),
     );
+    expect(xaiPost).toHaveBeenNthCalledWith(
+      1,
+      "/chat/completions",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: "user",
+              content: expect.stringContaining("I found a rock."),
+            }),
+          ]),
+        }),
+      }),
+    );
+    expect(events[0]).toEqual({ type: "transcribed", transcript: "I found a rock." });
+    expect(events.at(-1)).toMatchObject({ type: "done", comic: { transcript: "I found a rock." } });
     expect(transcribe).toHaveBeenCalledWith(expect.any(Blob));
   });
   it("rejects invalid scripts and wrong panel counts", () => {

@@ -37,3 +37,20 @@ it("passes valid text and avatar data into generation", async () => {
     expect.any(Function),
   );
 });
+
+it("accepts a recording without client transcription and forwards its original bytes", async () => {
+  const form = new FormData();
+  form.set("reference", "data:image/png;base64,YQ==");
+  form.set("panelCount", "3");
+  form.set("audio", new Blob(["original recording"], { type: "audio/mp4" }), "story.m4a");
+  const response = await POST(
+    new Request("http://localhost/api/comics", { method: "POST", body: form }),
+  );
+  expect(response.status).toBe(200);
+  const input = vi.mocked(makeComic).mock.calls[0][0];
+  expect(input.kind).toBe("audio");
+  if (input.kind !== "audio") throw new Error("Expected audio input");
+  expect(input.filename).toBe("story.m4a");
+  expect(await input.audio.text()).toBe("original recording");
+  expect(input).not.toHaveProperty("text");
+});

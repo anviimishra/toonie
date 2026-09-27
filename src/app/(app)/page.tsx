@@ -28,6 +28,7 @@ import { readComicStream } from "@/features/stories/generate";
 import { StickerComic } from "@/components/feed/StickerComic";
 import { StoryAudio } from "@/components/StoryAudio";
 import {
+  audioExtension,
   textSource,
   legacySource,
   prepareStory,
@@ -62,7 +63,6 @@ export default function RecordPage() {
   const [text, setText] = useState("");
   const [panelCount, setPanelCount] = useState(PANEL_COUNT_DEFAULT);
   const [sending, setSending] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
   const [printPreview, setPrintPreview] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [comic, setComic] = useState<Comic | null>(null);
@@ -78,7 +78,7 @@ export default function RecordPage() {
         if (mounted && !draft && input) {
           setText(input.text);
           setSource(input.source);
-          setMode("type");
+          setMode(input.source.audio ? "talk" : "type");
         }
         if (mounted && draft) {
           setComic(draft.comic);
@@ -86,7 +86,7 @@ export default function RecordPage() {
           setComicSource(draft.source ?? legacySource());
           setComicId(draft.id);
           setText(draft.comic.transcript);
-          setMode("type");
+          setMode(draft.source?.audio ? "talk" : "type");
           setPanelCount(Math.min(4, draft.comic.panels.length));
         }
       })
@@ -101,48 +101,10 @@ export default function RecordPage() {
     };
   }, []);
   const [problem, setProblem] = useState<string | null>(null);
-  const draft: StoryDraft = { mode, audio: recorder.audio, text, panelCount };
-  const hasSomething = mode === "talk" ? recorder.audio !== null : text.trim().length > 0;
-  async function reviewRecording() {
-    const check = checkDraft(draft, recorder.elapsedMs);
-    if (!check.ok) {
-      setProblem(check.reason);
-      return;
-    }
-    if (!recorder.audio || active.current) return;
-    const controller = new AbortController();
-    active.current = controller;
-    setTranscribing(true);
-    setProblem(null);
-    try {
-      const form = new FormData();
-      form.set("audio", recorder.audio, "story.webm");
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body: form,
-        signal: controller.signal,
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Couldn't transcribe the recording.");
-      if (!result.text?.trim()) throw new Error("We couldn't hear a story. Try recording again.");
-      const recordedSource: StorySource = {
-        kind: "voice",
-        audio: recorder.audio,
-        durationMs: recorder.elapsedMs,
-        originalTranscript: result.text,
-      };
-      await saveInput({ text: result.text, source: recordedSource });
-      setSource(recordedSource);
-      setText(result.text);
-      setMode("type");
-    } catch (error) {
-      if (!controller.signal.aborted)
-        setProblem(error instanceof Error ? error.message : "Couldn't transcribe the recording.");
-    } finally {
-      active.current = null;
-      setTranscribing(false);
-    }
-  }
+  const storyAudio = recorder.audio ?? source.audio;
+  const recordedMs = recorder.audio ? recorder.elapsedMs : (source.durationMs ?? 0);
+  const draft: StoryDraft = { mode, audio: storyAudio, text, panelCount };
+  const hasSomething = mode === "talk" ? storyAudio !== null : text.trim().length > 0;
 
   async function exportSticker() {
     if (!comic || downloading) return;
@@ -158,7 +120,7 @@ export default function RecordPage() {
   }
 
   async function send() {
-    const check = checkDraft(draft, recorder.elapsedMs);
+    const check = checkDraft(draft, recordedMs);
     if (!check.ok) {
       setProblem(check.reason);
       return;
@@ -171,7 +133,14 @@ export default function RecordPage() {
     setSending(true);
     const controller = new AbortController();
     active.current = controller;
+    let sentSource: StorySource =
+      mode === "talk"
+        ? { kind: "voice", audio: storyAudio, durationMs: recordedMs, originalTranscript: null }
+        : textSource();
     try {
+      // Save the original recording before generation, so retries and refreshes retain it.
+      await saveInput({ text: mode === "talk" ? "" : text, source: sentSource });
+      setSource(sentSource);
       const avatar = await avatars.get();
       if (!avatar) {
         setNeedsAvatar(true);
@@ -187,7 +156,8 @@ export default function RecordPage() {
           ? "The narrator is the exact character in the supplied reference image."
           : describeAvatar(avatar),
       );
-      if (mode === "talk" && recorder.audio) form.set("audio", recorder.audio, "story.webm");
+      if (mode === "talk" && storyAudio)
+        form.set("audio", storyAudio, `story.${audioExtension(storyAudio.type)}`);
       else form.set("text", text);
       setStage(mode === "talk" ? "Listening to your story…" : "Writing your comic…");
       const response = await fetch("/api/comics", {
@@ -196,18 +166,23 @@ export default function RecordPage() {
         signal: controller.signal,
       });
       const result = await readComicStream(response, (event) => {
-        if (event.type === "transcribed") setStage("Writing your comic…");
+        if (event.type === "transcribed") {
+          if (sentSource.kind === "voice")
+            sentSource = { ...sentSource, originalTranscript: event.transcript };
+          setStage("Writing your comic…");
+        }
         if (event.type === "scripted") setStage("Drawing your panels…");
         if (event.type === "panel") setDrawn((count) => count + 1);
       });
-      setComicSource(source);
+      setSource(sentSource);
+      setComicSource(sentSource);
       setComic(result);
       setText(result.transcript);
-      setMode("type");
+      setMode(sentSource.kind === "voice" ? "talk" : "type");
       const id = crypto.randomUUID();
       setComicId(id);
       try {
-        await saveDraft({ id, comic: result, source });
+        await saveDraft({ id, comic: result, source: sentSource });
       } catch {
         setProblem(
           "Your comic is ready, but the preview couldn't be saved. Keep this page open and try sending again.",
@@ -259,17 +234,6 @@ export default function RecordPage() {
       <p role="status" className="p-8">
         Opening your studio…
       </p>
-    );
-  if (transcribing)
-    return (
-      <section
-        className="flex flex-1 flex-col justify-center gap-4 p-8 text-center"
-        aria-busy="true"
-      >
-        <h1 className="text-3xl font-black">Writing down your story</h1>
-        <p role="status">Listening to your recording…</p>
-        <p className="text-sm text-stone-600">You can check and edit the words before we draw.</p>
-      </section>
     );
   if (sending) {
     return (
@@ -371,7 +335,7 @@ export default function RecordPage() {
           disabled={saving}
           className="mt-4 w-full py-3 font-bold"
         >
-          Edit story
+          {comicSource.kind === "voice" ? "Review recording" : "Edit story"}
         </button>
         <button onClick={startOver} disabled={saving} className="w-full py-3 text-stone-600">
           Tell a new story
@@ -421,6 +385,7 @@ export default function RecordPage() {
               }}
               onStop={recorder.stop}
             />
+            {!recorder.audioUrl && source.audio && <StoryAudio audio={source.audio} />}
             {recorder.audioUrl && (
               <audio
                 controls
@@ -462,7 +427,7 @@ export default function RecordPage() {
           </Link>
         )}
         <Button
-          onClick={mode === "talk" ? reviewRecording : send}
+          onClick={send}
           disabled={
             sending ||
             !hasSomething ||
@@ -472,7 +437,7 @@ export default function RecordPage() {
           className="mt-4 w-full"
         >
           <SparkleIcon className="size-5" />
-          {mode === "talk" ? "Review recording" : "Make my sticker"}
+          Make my sticker
         </Button>
       </div>
     </div>
