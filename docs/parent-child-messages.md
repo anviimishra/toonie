@@ -44,6 +44,14 @@ The child records using tap-to-start/stop, generates with the paired child avata
 
 ## Verification
 
-`scripts/test-message-schema.ps1` runs all migrations and 59 pgTAP assertions in an isolated Docker database. It covers participant-only access, recipient-only receipts, private storage, immutable content, code claims/expiry/retries, and rate limits.
+`scripts/test-message-schema.ps1` runs all migrations and 63 pgTAP assertions in an isolated Docker database. It covers participant-only access, recipient-only receipts, private storage, immutable content, code claims/expiry/retries, and rate limits.
 
 `scripts/smoke-delivery.mjs` exercises the running application against hosted Supabase with temporary accounts and media. It verifies real Auth, code pairing, both delivery directions, exact image/audio retrieval, missing-upload rejection, retry deduplication, and receipts. It does not spend xAI image-generation credits.
+
+## Reading comics and background drafts
+
+Apply `20260927080245_comic_jobs_and_thumbnails.sql` after the auth-profile repair. `comic_path` now holds the portrait reading PNG with legible per-panel captions. `thumbnail_path` optionally holds the separate wordless color square; `print_path` remains the wordless black/white square. Older rows with no thumbnail continue to render. Signed upload tickets include the optional thumbnail digest and finalization verifies it before publishing.
+
+`comic_jobs` and the private `comic-drafts` bucket are accessed only through owner-checked server routes. Parent and child clients post background jobs and poll every five seconds while visible, refreshing on reconnect. Jobs save original voice recordings and transcripts. Accepted work runs in Next.js `after()` without a live browser stream; interrupted work becomes a failure after six minutes. Only one unarchived job exists per user, and archive operations target an owned, completed job. No comic is sent automatically.
+
+Apply `20260927083604_separate_reading_and_sticker.sql` next. Reading comics now contain six independently scripted panels with captions and dialogue. Parent generation also writes a separate three- or four-panel wordless summary; its artwork supplies `thumbnail_path` and `print_path`. Child replies generate only the full reading comic and have null `print_path`. Their thumbnail reuses the first reading panel. The job counts all six plus the summary panels, and stores each edition under distinct private object paths. Older drafts retain their original layout.

@@ -1,7 +1,10 @@
 import { transcribe } from "./transcribe";
 import { stickerAspectRatio } from "@/features/stories/sticker";
 import { aiEnv } from "@/lib/env";
-import { titledScriptSchema, type Comic, type ComicEvent, type TitledScript } from "@/types";
+import {
+  READING_PANEL_COUNT,
+  titledScriptSchema,
+  type Comic, type ComicEvent, type TitledScript } from "@/types";
 import {
   SCRIPT_JSON_SCHEMA,
   panelImagePrompt,
@@ -19,6 +22,7 @@ export async function writeScript(
   story: string,
   panelCount: number,
   narrator?: string,
+  edition?: "reading" | "sticker",
 ): Promise<TitledScript> {
   const ask = () =>
     withRetry(() =>
@@ -27,7 +31,7 @@ export async function writeScript(
         body: {
           model: aiEnv().XAI_TEXT_MODEL,
           messages: [
-            { role: "system", content: scriptSystemPrompt(panelCount) },
+            { role: "system", content: scriptSystemPrompt(panelCount, edition) },
             { role: "user", content: scriptUserPrompt(story, narrator) },
           ],
           response_format: {
@@ -42,7 +46,7 @@ export async function writeScript(
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await ask();
     const raw = response.choices?.[0]?.message?.content ?? "";
-    const script = parseScript(raw, panelCount);
+    const script = parseScript(raw, panelCount, edition);
     if (script) return script;
   }
   throw new XaiError(
@@ -52,7 +56,11 @@ export async function writeScript(
   );
 }
 /** Reject wrong panel counts rather than silently losing the story ending. */
-export function parseScript(raw: string, panelCount: number): TitledScript | null {
+export function parseScript(
+  raw: string,
+  panelCount: number,
+  edition?: "reading" | "sticker",
+): TitledScript | null {
   let json: unknown;
   try {
     json = JSON.parse(raw);
@@ -63,7 +71,14 @@ export function parseScript(raw: string, panelCount: number): TitledScript | nul
   if (!result.success) return null;
   const script = result.data;
   if (script.panels.length !== panelCount) return null;
-  return { ...script, panels: script.panels.map((panel) => ({ ...panel, caption: "" })) };
+  if (edition === "sticker") {
+    if (script.panels.some((panel) => panel.caption.trim() || panel.dialogue?.length)) return null;
+    return script;
+  }
+  if (edition === "reading" && !script.panels.some((panel) => panel.dialogue?.length)) return null;
+  if (script.panels.some((panel) => !panel.caption.trim() || panel.caption.length > 180))
+    return null;
+  return script;
 }
 type ImageResponse = { data?: { b64_json?: string }[] };
 export async function drawPanel(
@@ -90,7 +105,7 @@ export async function drawPanel(
   return url;
 }
 // ------------------------------------------------------------ orchestrator
-export type ComicRequest =
+export type ComicRequest = { outputMode?: "dual" | "reading" } & (
   | {
       kind: "audio";
       audio: Blob;
@@ -101,11 +116,13 @@ export type ComicRequest =
       narrator?: string;
       reference: string;
     }
-  | { kind: "text"; text: string; panelCount: number; narrator?: string; reference: string };
+  | { kind: "text"; text: string; panelCount: number; narrator?: string; reference: string }
+);
 function friendly(error: unknown): string {
   if (error instanceof XaiError) {
     if (error.status === 401 || error.status === 403) return "The AI key was rejected.";
     if (error.status === 429) return "Too many comics at once. Try again in a minute.";
+    if (error.timedOut) return "The AI took too long to answer. Please try again.";
     if (error.status === 0) return "Couldn't reach the AI service. Check the connection.";
     return error.message;
   }
@@ -130,31 +147,48 @@ export async function makeComic(
       return;
     }
     emit({ type: "transcribed", transcript });
-    const script = await writeScript(transcript, request.panelCount, request.narrator);
-    emit({ type: "scripted", title: script.title, panels: script.panels });
-    const results = await Promise.all(
-      script.panels.map(async (panel, index) => {
-        try {
-          const imageUrl = await drawPanel(
-            panelImagePrompt({
-              scene: panel.scene,
-              cast: script.cast,
-              index,
-              total: script.panels.length,
-              narrator: request.narrator,
-            }),
-            request.reference,
-            stickerAspectRatio(script.panels.length, index),
-          );
-          emit({ type: "panel", index, imageUrl });
-          return { ...panel, imageUrl };
-        } catch (error) {
-          emit({ type: "panel_failed", index, message: friendly(error) });
-          return { ...panel, imageUrl: undefined };
-        }
-      }),
-    );
-    if (results.some((panel) => !panel.imageUrl)) {
+    const full = !!request.outputMode;
+    const [script, sticker] = await Promise.all([
+      writeScript(
+        transcript,
+        full ? READING_PANEL_COUNT : request.panelCount,
+        request.narrator,
+        full ? "reading" : undefined,
+      ),
+      request.outputMode === "dual"
+        ? writeScript(transcript, Math.max(3, request.panelCount), request.narrator, "sticker")
+        : Promise.resolve(null),
+    ]);
+    async function draw(scriptToDraw: TitledScript, edition?: "reading" | "sticker") {
+      emit({ type: "scripted", title: scriptToDraw.title, panels: scriptToDraw.panels, edition });
+      return Promise.all(
+        scriptToDraw.panels.map(async (panel, index) => {
+          try {
+            const imageUrl = await drawPanel(
+              panelImagePrompt({
+                scene: panel.scene,
+                cast: script.cast,
+                index,
+                total: scriptToDraw.panels.length,
+                narrator: request.narrator,
+              }),
+              request.reference,
+              edition === "reading" ? "4:3" : stickerAspectRatio(scriptToDraw.panels.length, index),
+            );
+            emit({ type: "panel", index, imageUrl, edition });
+            return { ...panel, imageUrl };
+          } catch (error) {
+            emit({ type: "panel_failed", index, message: friendly(error), edition });
+            return { ...panel, imageUrl: undefined };
+          }
+        }),
+      );
+    }
+    const [results, stickerPanels] = await Promise.all([
+      draw(script, full ? "reading" : undefined),
+      sticker ? draw(sticker, "sticker") : Promise.resolve(undefined),
+    ]);
+    if ([...results, ...(stickerPanels ?? [])].some((panel) => !panel.imageUrl)) {
       emit({
         type: "error",
         message:
@@ -162,7 +196,14 @@ export async function makeComic(
       });
       return;
     }
-    const comic: Comic = { title: script.title, transcript, panels: results, format: "sticker" };
+    const comic: Comic = {
+      title: script.title,
+      transcript,
+      panels: results,
+      stickerPanels,
+      format: "sticker",
+      readingVersion: full ? 2 : 1,
+    };
     emit({ type: "done", comic });
   } catch (error) {
     console.error("[comics] pipeline failed:", error);

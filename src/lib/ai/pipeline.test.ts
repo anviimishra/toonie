@@ -2,7 +2,7 @@ import { transcribe } from "./transcribe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeComic, parseScript } from "./pipeline";
 import { xaiPost } from "./xai";
-import type { ComicEvent } from "@/types";
+import { READING_PANEL_COUNT, type ComicEvent } from "@/types";
 
 vi.mock("./transcribe", () => ({
   transcribe: vi.fn(async () => ({ text: "I found a rock.", language: "en", duration: 2 })),
@@ -115,6 +115,90 @@ describe("comic pipeline", () => {
   it("rejects invalid scripts and wrong panel counts", () => {
     expect(parseScript("bad JSON", 1)).toBeNull();
     expect(parseScript(JSON.stringify(script), 2)).toBeNull();
-    expect(parseScript(JSON.stringify(script), 1)?.panels[0].caption).toBe("");
+    expect(parseScript(JSON.stringify(script), 1)?.panels[0].caption).toBe("I found Kevin.");
+    expect(
+      parseScript(JSON.stringify({ ...script, panels: [{ scene: "Rock", caption: "" }] }), 1),
+    ).toBeNull();
   });
+});
+
+function mockEditions(failSticker = false) {
+  vi.mocked(xaiPost).mockImplementation(async (path, options) => {
+    const body = options.body as Record<string, unknown>;
+    if (path === "/chat/completions") {
+      const prompt = (body.messages as { content: string }[])[0].content;
+      const sticker = prompt.includes("wordless 2 inch");
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...script,
+                panels: Array.from({ length: sticker ? 3 : READING_PANEL_COUNT }, (_, i) => ({
+                  scene: `${sticker ? "Summary" : "Reading"} moment ${i}`,
+                  caption: sticker ? "" : `Story moment ${i}`,
+                  dialogue: sticker ? [] : [{ speaker: "Me", text: "Hello!" }],
+                })),
+              }),
+            },
+          },
+        ],
+      };
+    }
+    if (failSticker && String(body.prompt).includes("Summary moment")) throw new Error("offline");
+    return { data: [{ b64_json: "YQ==" }] };
+  });
+}
+it("scripts and draws a full reading comic independently from the wordless sticker", async () => {
+  mockEditions();
+  const events: ComicEvent[] = [];
+  await makeComic(
+    { kind: "text", text: "I found a rock.", reference, panelCount: 3, outputMode: "dual" },
+    (e) => events.push(e),
+  );
+  const done = events.find((e) => e.type === "done");
+  expect(done?.comic.panels).toHaveLength(READING_PANEL_COUNT);
+  expect(done?.comic.stickerPanels).toHaveLength(3);
+  expect(done?.comic.panels[0]).toMatchObject({
+    scene: "Reading moment 0",
+    dialogue: [{ speaker: "Me", text: "Hello!" }],
+  });
+  expect(done?.comic.stickerPanels?.[0]).toMatchObject({
+    scene: "Summary moment 0",
+    caption: "",
+    dialogue: [],
+  });
+  const images = vi.mocked(xaiPost).mock.calls.filter((call) => call[0] === "/images/edits");
+  expect(images).toHaveLength(READING_PANEL_COUNT + 3);
+  images.forEach((call) => expect(call[1].body).toMatchObject({ image: { url: reference } }));
+  expect(events.filter((e) => e.type === "panel" && e.edition === "reading")).toHaveLength(
+    READING_PANEL_COUNT,
+  );
+  expect(events.filter((e) => e.type === "panel" && e.edition === "sticker")).toHaveLength(3);
+});
+it("child replies generate only the full reading comic", async () => {
+  mockEditions();
+  const events: ComicEvent[] = [];
+  await makeComic(
+    { kind: "text", text: "I found a rock.", reference, panelCount: 3, outputMode: "reading" },
+    (e) => events.push(e),
+  );
+  expect(events.find((e) => e.type === "done")?.comic.panels).toHaveLength(READING_PANEL_COUNT);
+  expect(events.find((e) => e.type === "done")?.comic.stickerPanels).toBeUndefined();
+  expect(
+    vi.mocked(xaiPost).mock.calls.filter((call) => call[0] === "/chat/completions"),
+  ).toHaveLength(1);
+  expect(vi.mocked(xaiPost).mock.calls.filter((call) => call[0] === "/images/edits")).toHaveLength(
+    READING_PANEL_COUNT,
+  );
+});
+it("cannot publish a parent comic if its separate sticker fails", async () => {
+  mockEditions(true);
+  const events: ComicEvent[] = [];
+  await makeComic(
+    { kind: "text", text: "I found a rock.", reference, panelCount: 3, outputMode: "dual" },
+    (e) => events.push(e),
+  );
+  expect(events.at(-1)?.type).toBe("error");
+  expect(events.some((e) => e.type === "done")).toBe(false);
 });

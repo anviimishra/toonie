@@ -38,24 +38,27 @@ export async function deliverStory(story: PreparedStory, pairId: string, child =
     audioDurationMs: story.source.durationMs,
     panelCount: story.panelCount,
     comic: await fingerprint(story.colorImage),
-    print: await fingerprint(story.printImage),
+    print: story.printImage ? await fingerprint(story.printImage) : null,
+    thumbnail: story.thumbnailImage ? await fingerprint(story.thumbnailImage) : undefined,
     audio: story.source.audio ? await fingerprint(story.source.audio) : null,
   });
   const prepared = await apiJson<{
     sent: boolean;
     id?: string;
     ticket: string;
-    uploads: { key: "comic" | "print" | "audio"; path: string; token: string }[];
+    uploads: { key: "comic" | "print" | "audio" | "thumbnail"; path: string; token: string }[];
   }>("/api/messages/prepare", jsonBody(input), child);
   if (prepared.sent) return story.id;
   const client = child ? supabaseChild() : supabaseBrowser();
   for (const upload of prepared.uploads) {
     const blob =
-      upload.key === "comic"
-        ? story.colorImage
-        : upload.key === "print"
-          ? story.printImage
-          : story.source.audio!;
+      upload.key === "thumbnail"
+        ? story.thumbnailImage!
+        : upload.key === "comic"
+          ? story.colorImage
+          : upload.key === "print"
+            ? story.printImage!
+            : story.source.audio!;
     const { error } = await client.storage
       .from(BUCKET_MESSAGE_MEDIA)
       .uploadToSignedUrl(upload.path, upload.token, blob, {

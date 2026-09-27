@@ -7,6 +7,7 @@ import { FeedCard, FeedCardSkeleton } from "@/components/feed/FeedCard";
 import { LinkButton } from "@/components/feed/LinkButton";
 import { watchMessages } from "@/features/messages/client";
 import { feed, type FeedItem } from "@/features/feed";
+import { ComicJobNotice } from "@/components/ComicJobNotice";
 
 type State =
   { kind: "loading" } | { kind: "error" } | { kind: "ready"; items: FeedItem[]; now: number };
@@ -46,6 +47,7 @@ export default function FeedPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <ComicJobNotice />
       <header className="flex items-center justify-between px-6 pt-[max(env(safe-area-inset-top),1.25rem)]">
         <div>
           <p className="text-xs font-black tracking-[0.2em] text-orange-500 uppercase">Toonie</p>

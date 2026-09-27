@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Comic } from "@/types";
+import { READING_PANEL_COUNT, type Comic } from "@/types";
+import { renderReadingComic } from "./export-reading";
 
 export type StorySource = {
   kind: "voice" | "text" | "unknown";
@@ -26,7 +27,8 @@ export type PreparedStory = {
   source: StorySource;
   panelCount: number;
   colorImage: Blob;
-  printImage: Blob;
+  printImage: Blob | null;
+  thumbnailImage?: Blob;
 };
 
 const manifestSchema = z.object({
@@ -38,7 +40,7 @@ const manifestSchema = z.object({
   source: z.enum(["voice", "text", "unknown"]),
   originalTranscript: z.string().nullable(),
   audioDurationMs: z.number().nonnegative().nullable(),
-  panelCount: z.number().int().min(1).max(4),
+  panelCount: z.number().int().min(1).max(6),
   imageMimeType: z.literal("image/png"),
   audioMimeType: z.string().nullable(),
 });
@@ -56,8 +58,7 @@ export function submissionFormData(story: PreparedStory): FormData {
   if (
     !story.colorImage.size ||
     story.colorImage.type !== "image/png" ||
-    !story.printImage.size ||
-    story.printImage.type !== "image/png"
+    (story.printImage !== null && (!story.printImage.size || story.printImage.type !== "image/png"))
   ) {
     throw new Error("Both finished comic images must be prepared before uploading.");
   }
@@ -81,7 +82,7 @@ export function submissionFormData(story: PreparedStory): FormData {
   const form = new FormData();
   form.set("metadata", JSON.stringify(manifest));
   form.set("comic_image", story.colorImage, `${story.id}.png`);
-  form.set("print_image", story.printImage, `${story.id}-print.png`);
+  if (story.printImage) form.set("print_image", story.printImage, `${story.id}-print.png`);
   if (story.source.audio)
     form.set("audio", story.source.audio, `${story.id}.${audioExtension(story.source.audio.type)}`);
   return form;
@@ -96,12 +97,18 @@ export async function prepareStory(
   if (
     comic.format !== "sticker" ||
     !comic.panels.length ||
-    comic.panels.some((panel) => !panel.imageUrl)
+    [...comic.panels, ...(comic.stickerPanels ?? [])].some((panel) => !panel.imageUrl)
   )
     throw new Error("Finish the sticker before preparing its files.");
+  const sticker = comic.readingVersion === 2 ? comic.stickerPanels : comic.panels;
+  if (
+    comic.readingVersion === 2 &&
+    (comic.panels.length !== READING_PANEL_COUNT || (sticker && ![3, 4].includes(sticker.length)))
+  )
+    throw new Error("The reading comic or sticker is incomplete.");
   const [colorImage, printImage] = await Promise.all([
-    render(comic.panels, false),
-    render(comic.panels, true),
+    render(sticker ?? [comic.panels[0]], false),
+    sticker ? render(sticker, true) : Promise.resolve(null),
   ]);
   const story: PreparedStory = {
     version: 1,
@@ -111,7 +118,8 @@ export async function prepareStory(
     transcript: comic.transcript,
     source,
     panelCount: comic.panels.length,
-    colorImage,
+    colorImage: comic.readingVersion ? await renderReadingComic(comic.panels) : colorImage,
+    thumbnailImage: comic.readingVersion ? colorImage : undefined,
     printImage,
   };
   submissionFormData(story); // Validate readiness before saving or marking locally sent.

@@ -6,7 +6,7 @@ export type PhotoCheck = { ok: true } | { ok: false; reason: string };
 /** Whether a picked file is usable as a selfie, with a child-friendly reason. */
 export function checkPhoto(file: { type: string; size: number }): PhotoCheck {
   if (!file.type.startsWith("image/")) {
-    return { ok: false, reason: "That isn't a photo. Try taking a selfie!" };
+    return { ok: false, reason: "That isn't a photo. Choose a JPG, PNG or WebP photo." };
   }
   if (file.size === 0) return { ok: false, reason: "That photo is empty. Try another one." };
   if (file.size > MAX_PHOTO_BYTES) {

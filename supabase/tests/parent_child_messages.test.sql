@@ -82,7 +82,7 @@ select throws_ok($$update public.comic_messages set transcript='  '$$, '23514', 
 select throws_ok($$update public.comic_messages set title=''$$, '23514', null, 'title required');
 select throws_ok($$update public.comic_messages set comic_path=null$$, '23502', null, 'comic image required');
 select throws_ok($$update public.comic_messages set comic_path='other-family/comic.png'$$, '23514', null, 'cannot reference other media paths');
-select throws_ok($$update public.comic_messages set panel_count=5$$, '23514', null, 'sticker panel limit enforced');
+select throws_ok($$update public.comic_messages set panel_count=7$$, '23514', null, 'reading panel limit enforced');
 select throws_ok($$update public.comic_messages set audio_mime_type=null where audio_path is not null$$, '23514', null, 'voice media needs MIME metadata');
 select throws_ok($$update public.comic_messages set audio_path=null where audio_path is not null$$, '23514', null, 'voice metadata cannot survive without voice file');
 select throws_ok($$insert into public.parent_child_pairs(parent_id,child_id) values ('10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001')$$, '23514', null, 'pair endpoints distinct');

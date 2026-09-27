@@ -96,6 +96,9 @@ export default function SettingsPage() {
           </ul>
         </Section>
 
+        {/* Right under the avatars: a code needs the child's avatar saved first. */}
+        <PairingSettings />
+
         <Section title="Language">
           <LanguageSettings />
         </Section>
@@ -104,7 +107,6 @@ export default function SettingsPage() {
           <VoiceSettings />
         </Section>
 
-        <PairingSettings />
         <AccountCard avatar={mine} />
       </div>
     </div>

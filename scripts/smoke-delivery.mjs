@@ -75,9 +75,10 @@ try {
       transcript: "A tiny test adventure.",
       originalTranscript: voice ? "A tiny test adventure." : null,
       audioDurationMs: voice ? 1 : null,
-      panelCount: 3,
+      panelCount: 6,
       comic: media(png, "image/png"),
-      print: media(png, "image/png"),
+      print: sender === pt ? media(png, "image/png") : null,
+      thumbnail: media(png, "image/png"),
       audio: voice ? media(audio, "audio/wav") : null,
     };
     const prepared = await api("/api/messages/prepare", sender, input);
@@ -97,7 +98,10 @@ try {
     assert.equal((await api("/api/messages/prepare", sender, input)).sent, true);
     const item = (await api(`/api/messages?id=${input.id}`, receiver)).items[0];
     assert.equal(item.direction, "received");
+    if (sender === ct) assert.ok(!item.printUrl);
+    else assert.equal((await fetch(item.printUrl)).status, 200);
     assert.equal(item.transcript, input.transcript);
+    assert.deepEqual(Buffer.from(await (await fetch(item.thumbnailUrl)).arrayBuffer()), png);
     assert.deepEqual(Buffer.from(await (await fetch(item.imageUrl)).arrayBuffer()), png);
     if (voice)
       assert.deepEqual(Buffer.from(await (await fetch(item.audioUrl)).arrayBuffer()), audio);

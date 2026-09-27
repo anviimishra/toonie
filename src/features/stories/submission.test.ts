@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { READING_PANEL_COUNT } from "@/types";
 import { prepareStory, submissionFormData, textSource } from "./submission";
 const id = "00000000-0000-4000-8000-000000000001";
 const comic = {
@@ -49,4 +50,36 @@ describe("delivery preparation", () => {
       ),
     ).rejects.toThrow("Finish the sticker");
   });
+});
+
+vi.mock("./export-reading", () => ({
+  renderReadingComic: vi.fn(async () => new Blob(["reading"], { type: "image/png" })),
+}));
+it("prepares separate summary files and full reading artwork", async () => {
+  const renderer = vi.fn(render);
+  const full = {
+    ...comic,
+    readingVersion: 2 as const,
+    panels: Array(READING_PANEL_COUNT).fill(comic.panels[0]),
+    stickerPanels: Array(3).fill(comic.panels[0]),
+  };
+  const result = await prepareStory(id, full, textSource(), renderer);
+  expect(renderer).toHaveBeenCalledWith(full.stickerPanels, true);
+  expect(renderer).toHaveBeenCalledWith(full.stickerPanels, false);
+  expect(await result.colorImage.text()).toBe("reading");
+  expect(await result.thumbnailImage?.text()).toBe("png");
+  expect(result.panelCount).toBe(READING_PANEL_COUNT);
+});
+it("child reading comics have no print file or extra sticker rendering", async () => {
+  const renderer = vi.fn(render);
+  const result = await prepareStory(
+    id,
+    { ...comic, readingVersion: 2, panels: Array(READING_PANEL_COUNT).fill(comic.panels[0]) },
+    textSource(),
+    renderer,
+  );
+  expect(result.printImage).toBeNull();
+  expect(submissionFormData(result).has("print_image")).toBe(false);
+  expect(renderer).toHaveBeenCalledTimes(1);
+  expect(renderer).toHaveBeenCalledWith([comic.panels[0]], false);
 });

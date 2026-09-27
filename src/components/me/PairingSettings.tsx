@@ -7,7 +7,8 @@ import { apiJson, jsonBody } from "@/lib/api-client";
 import { getPairs } from "@/features/messages/client";
 import type { ParentChildPair } from "@/lib/supabase/types";
 export function PairingSettings() {
-  const [pairs, setPairs] = useState<ParentChildPair[]>([]),
+  // One child per parent: a new code moves the connection to the new device.
+  const [pair, setPair] = useState<ParentChildPair | null>(null),
     [name, setName] = useState("Child"),
     [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null),
     [problem, setProblem] = useState(""),
@@ -18,7 +19,7 @@ export function PairingSettings() {
     const refresh = () =>
       getPairs()
         .then((p) => {
-          if (active) setPairs(p);
+          if (active) setPair(p[0] ?? null);
         })
         .catch((e) => {
           if (active) setProblem(e.message);
@@ -40,7 +41,16 @@ export function PairingSettings() {
     setProblem("");
     setNotice("");
     try {
-      setCode(await apiJson("/api/pairing/code", jsonBody({ name, reference: await reference() })));
+      setCode(
+        await apiJson(
+          "/api/pairing/code",
+          jsonBody({
+            // A connected child keeps their name; only a new child is named here.
+            name: pair?.child_name ?? name,
+            reference: await reference(),
+          }),
+        ),
+      );
     } catch (e) {
       setProblem(e instanceof Error ? e.message : "Couldn't create code.");
     } finally {
@@ -62,24 +72,61 @@ export function PairingSettings() {
       setBusy(false);
     }
   }
+  async function removeChild(target: ParentChildPair) {
+    const sure = window.confirm(
+      `Remove ${target.child_name}? This disconnects their device and deletes the comics you've sent each other.`,
+    );
+    if (!sure) return;
+    setBusy(true);
+    setProblem("");
+    setNotice("");
+    try {
+      await apiJson("/api/pairs", { ...jsonBody({ id: target.id }), method: "DELETE" });
+      setPair(null);
+      setCode(null);
+      setNotice(`${target.child_name} was removed.`);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "Couldn't remove the child.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="rounded-2xl bg-white p-5" aria-label="Connect child device">
-      <h2 className="text-xl font-black">Connect a child device</h2>
-      <p className="mt-2 text-sm text-stone-600">
-        Save the child&apos;s avatar above, then make a code. On the other device, choose “I&apos;m
-        the kid” and enter it.
-      </p>
-      <label className="mt-4 block text-sm font-bold">
-        Child&apos;s name
-        <input
-          value={name}
-          maxLength={60}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-stone-300 p-3"
-        />
-      </label>
-      <Button onClick={createCode} disabled={busy || !name.trim()} className="mt-3 w-full">
-        {busy ? "Working…" : "Generate five-digit code"}
+      <h2 className="text-xl font-black">
+        {pair ? "Your child's device" : "Connect a child device"}
+      </h2>
+      {pair ? (
+        <>
+          <p className="mt-2 font-bold">{pair.child_name} · Connected</p>
+          <p className="mt-1 text-sm text-stone-600">
+            Switching tablets or signed out? Get a new code and enter it on the child&apos;s device.
+            Your comics stay.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-stone-600">
+            Save the child&apos;s avatar above, then make a code. On the other device, choose
+            “I&apos;m the kid” and enter it.
+          </p>
+          <label className="mt-4 block text-sm font-bold">
+            Child&apos;s name
+            <input
+              value={name}
+              maxLength={60}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-stone-300 p-3"
+            />
+          </label>
+        </>
+      )}
+      <Button
+        onClick={createCode}
+        disabled={busy || (!pair && !name.trim())}
+        className="mt-3 w-full"
+      >
+        {busy ? "Working…" : pair ? "Get a new code" : "Generate five-digit code"}
       </Button>
       {code && (
         <div className="mt-4 text-center" role="status">
@@ -93,21 +140,19 @@ export function PairingSettings() {
           </p>
         </div>
       )}
-      {pairs.length > 0 && (
-        <ul className="mt-5 divide-y divide-stone-200">
-          {pairs.map((p) => (
-            <li key={p.id} className="py-3">
-              <p className="font-bold">{p.child_name} · Connected</p>
-              <button
-                disabled={busy}
-                onClick={() => syncAvatar(p.id)}
-                className="mt-1 text-sm underline"
-              >
-                Sync current child avatar
-              </button>
-            </li>
-          ))}
-        </ul>
+      {pair && (
+        <div className="mt-4 flex gap-4 border-t border-stone-200 pt-3">
+          <button disabled={busy} onClick={() => syncAvatar(pair.id)} className="text-sm underline">
+            Sync current child avatar
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => removeChild(pair)}
+            className="text-sm text-red-700 underline"
+          >
+            Remove child
+          </button>
+        </div>
       )}
       {notice && (
         <p role="status" className="mt-3 text-sm">

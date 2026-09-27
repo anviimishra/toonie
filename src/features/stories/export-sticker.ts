@@ -1,6 +1,7 @@
 import type { ComicPanelResult } from "@/types";
 import { PRINT_WIDTH_DOTS, ditherToMono } from "./print";
 import { STICKER_EXPORT_PX, stickerRects } from "./sticker";
+import { thermalDither } from "./thermal";
 
 /** Draws the sticker (white background, panels, borders) at `size` × `size` px. */
 async function drawSticker(
@@ -47,12 +48,7 @@ export async function renderSticker(panels: ComicPanelResult[], monochrome = fal
   // A true black/white raster, matching the preview and avoiding thermal gray mush.
   if (monochrome) {
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      const luminance =
-        0.2126 * pixels.data[i] + 0.7152 * pixels.data[i + 1] + 0.0722 * pixels.data[i + 2];
-      const value = luminance < 110 ? 0 : 255;
-      pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = value;
-    }
+    thermalDither(pixels.data, canvas.width);
     ctx.putImageData(pixels, 0, 0);
   }
   return toPng(canvas);

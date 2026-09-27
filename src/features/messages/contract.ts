@@ -16,9 +16,10 @@ export const deliverySchema = z
     transcript: z.string().trim().min(1).max(4000),
     originalTranscript: z.string().max(8000).nullable(),
     audioDurationMs: z.number().int().nonnegative().nullable(),
-    panelCount: z.number().int().min(1).max(4),
+    panelCount: z.number().int().min(1).max(6),
     comic: mediaSchema.refine((m) => m.type === "image/png"),
-    print: mediaSchema.refine((m) => m.type === "image/png"),
+    print: mediaSchema.refine((m) => m.type === "image/png").nullable(),
+    thumbnail: mediaSchema.refine((m) => m.type === "image/png").optional(),
     audio: mediaSchema.refine((m) => m.type.startsWith("audio/")).nullable(),
   })
   .refine(
@@ -30,7 +31,12 @@ export function deliveryFiles(input: DeliveryInput) {
   const base = `${input.pairId}/${input.id}`;
   return [
     { key: "comic" as const, path: `${base}/comic.png`, media: input.comic },
-    { key: "print" as const, path: `${base}/print.png`, media: input.print },
+    ...(input.print
+      ? [{ key: "print" as const, path: `${base}/print.png`, media: input.print }]
+      : []),
+    ...(input.thumbnail
+      ? [{ key: "thumbnail" as const, path: `${base}/thumbnail.png`, media: input.thumbnail }]
+      : []),
     ...(input.audio ? [{ key: "audio" as const, path: `${base}/voice`, media: input.audio }] : []),
   ];
 }

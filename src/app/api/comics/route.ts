@@ -7,6 +7,8 @@ import { isLanguage, type LanguageCode } from "@/features/settings/languages";
 import { MAX_STORY_CHARS } from "@/lib/ai/prompts";
 import { makeComic, type ComicRequest } from "@/lib/ai/pipeline";
 import { type ComicEvent } from "@/types";
+import { after } from "next/server";
+import { createComicJob, runComicJob } from "@/lib/comic-jobs";
 /**
  * POST /api/comics — turn a recorded or typed story into a comic.
  *
@@ -22,7 +24,7 @@ import { type ComicEvent } from "@/types";
  * screen can show the words, then the captions, then each picture arriving.
  */
 export const runtime = "nodejs";
-// Six images are drawn in parallel; this leaves room for a slow one.
+// Up to nine images are drawn in parallel; this leaves room for a slow one.
 export const maxDuration = 300;
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const fieldsSchema = z.object({
@@ -127,6 +129,22 @@ export async function POST(request: Request): Promise<Response> {
     };
   } else {
     return problem(400, "Send either a recording or some text.");
+  }
+  // Sticker only for now: the separate reading comic took too long to script for a demo.
+  comicRequest.outputMode = undefined;
+  if (new URL(request.url).searchParams.get("background") === "1") {
+    try {
+      const rawDuration = Number(form.get("durationMs"));
+      const duration =
+        comicRequest.kind === "audio" && Number.isSafeInteger(rawDuration) && rawDuration >= 0
+          ? rawDuration
+          : null;
+      const id = await createComicJob(identity.user.id, comicRequest, duration);
+      after(() => runComicJob(id, identity.user.id, comicRequest));
+      return Response.json({ id }, { status: 202 });
+    } catch (error) {
+      return apiError(error);
+    }
   }
   const encoder = new TextEncoder();
   let cancelled = false;
